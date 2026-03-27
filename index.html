@@ -703,13 +703,13 @@
             body.castShadow = true;
             group.add(body);
             
-            // 头部 - 使用翠翠图片，完全展示
+            // 头部 - 使用翠翠图片，完全展示，始终面向相机
             const textureLoader = new THREE.TextureLoader();
             textureLoader.load('cuicui.jpg', (texture) => {
                 texture.encoding = THREE.sRGBEncoding;
                 
                 // 创建圆形头像面片
-                const headSize = 0.55;
+                const headSize = 0.6;
                 const faceGeo = new THREE.CircleGeometry(headSize, 32);
                 
                 // 调整纹理以完整显示图片
@@ -728,10 +728,16 @@
                     side: THREE.DoubleSide
                 });
                 
+                // 创建头像容器，用于 Billboard 效果
+                const faceContainer = new THREE.Group();
+                faceContainer.position.set(0, 1.35, 0);
+                faceContainer.name = 'faceContainer';
+                group.add(faceContainer);
+                
                 const faceMesh = new THREE.Mesh(faceGeo, faceMat);
-                faceMesh.position.set(0, 1.3, 0.15);
+                faceMesh.position.z = 0.15;
                 faceMesh.name = 'face';
-                group.add(faceMesh);
+                faceContainer.add(faceMesh);
                 
                 // 头像边框光环
                 const ringGeo = new THREE.RingGeometry(headSize * 1.05, headSize * 1.15, 32);
@@ -742,9 +748,9 @@
                     side: THREE.DoubleSide
                 });
                 const ring = new THREE.Mesh(ringGeo, ringMat);
-                ring.position.set(0, 1.3, 0.14);
+                ring.position.z = 0.14;
                 ring.name = 'headRing';
-                group.add(ring);
+                faceContainer.add(ring);
                 
                 // 头像发光
                 const glowGeo = new THREE.CircleGeometry(headSize * 1.3, 32);
@@ -755,9 +761,12 @@
                     side: THREE.DoubleSide
                 });
                 const glow = new THREE.Mesh(glowGeo, glowMat);
-                glow.position.set(0, 1.3, 0.13);
+                glow.position.z = 0.13;
                 glow.name = 'headGlow';
-                group.add(glow);
+                faceContainer.add(glow);
+                
+                // 保存引用到 userData 用于 billboard 更新
+                player.userData.faceContainer = faceContainer;
                 
             }, undefined, (err) => {
                 console.log('头像加载失败，使用默认');
@@ -966,8 +975,9 @@
                 let availableEnemies = enemyNames.slice(0, Math.min(4 + level, enemyNames.length));
                 const name = availableEnemies[Math.floor(Math.random() * availableEnemies.length)];
                 
-                const x = 15 + Math.random() * (levelLength - 20);
-                const z = (Math.random() - 0.5) * 12;
+                // 所有怪物都在 Z=0 的同一条线上，挡在玩家前进路上
+                const x = 15 + i * 4 + Math.random() * 2; // 均匀分布，间隔约4单位
+                const z = 0; // 强制在同一平行线上
                 const enemy = createEnemy(name, x, 0, z);
                 enemies.push(enemy);
             }
@@ -1133,10 +1143,12 @@
             
             createPlayer();
             
-            // 强制设置相机到正确位置
+            // 确保玩家在 Z=0
             if (player) {
+                player.position.z = 0;
+                // 强制设置相机到正确位置
                 camera.position.set(player.position.x, player.position.y + 3.5, player.position.z + 8);
-                camera.lookAt(player.position.x, player.position.y + 0.5, player.position.z);
+                camera.lookAt(player.position.x, player.position.y + 1.0, player.position.z);
             }
             
             generateLevel(currentLevel);
@@ -1248,8 +1260,8 @@
                 isJumping = false;
             }
             
-            // Z轴限制
-            player.position.z = Math.max(-8, Math.min(8, player.position.z));
+            // Z轴限制 - 强制保持在 Z=0 的平行线上，和怪物同一条线
+            player.position.z = 0;
             
             // 下蹲动画
             const targetScaleY = isCrouching ? 0.65 : 1;
@@ -1277,14 +1289,12 @@
                 }
             }
             
-            // 转向和头像同步
+            // 转向（身体转向，但头像用 Billboard 始终面向相机）
             if (moveX > 0) {
                 player.rotation.y = 0;
-                updateFaceDirection(0);
             }
             if (moveX < 0) {
                 player.rotation.y = Math.PI;
-                updateFaceDirection(Math.PI);
             }
             
             // 攻击
@@ -1299,15 +1309,8 @@
             
             if (invincibleTime > 0) invincibleTime -= deltaTime;
             
-            // 头像动画
-            const headRing = player.getObjectByName('headRing');
-            const headGlow = player.getObjectByName('headGlow');
-            if (headRing) {
-                headRing.rotation.z -= 0.02;
-            }
-            if (headGlow) {
-                headGlow.material.opacity = 0.15 + Math.sin(Date.now() * 0.003) * 0.1;
-            }
+            // 头像 Billboard 效果 - 始终面向相机
+            updateFaceBillboard();
             
             if (comboTimer > 0) {
                 comboTimer -= deltaTime;
@@ -1315,14 +1318,20 @@
             }
         }
         
-        function updateFaceDirection(rotation) {
-            const face = player.getObjectByName('face');
-            const headRing = player.getObjectByName('headRing');
-            const headGlow = player.getObjectByName('headGlow');
-            
-            if (face) face.rotation.y = rotation;
-            if (headRing) headRing.rotation.y = rotation;
-            if (headGlow) headGlow.rotation.y = rotation;
+        function updateFaceBillboard() {
+            // Billboard 效果：头像始终面向相机
+            if (player && player.userData.faceContainer) {
+                const faceContainer = player.userData.faceContainer;
+                
+                // 让头像容器面向相机
+                faceContainer.lookAt(camera.position);
+                
+                // 头像发光旋转动画
+                const headRing = faceContainer.getObjectByName('headRing');
+                if (headRing) {
+                    headRing.rotation.z -= 0.02;
+                }
+            }
         }
         
         function updateSwordAnimation() {
@@ -1397,12 +1406,10 @@
             camera.position.y += (targetY - camera.position.y) * 0.12;
             camera.position.z += (targetZ - camera.position.z) * 0.12;
             
-            // 始终看向玩家前方（根据朝向）
-            const facingRight = player.rotation.y === 0;
-            const lookOffset = facingRight ? 3 : -3;
+            // 始终看向玩家，头像会面向相机（Billboard）
             camera.lookAt(
-                player.position.x + lookOffset,
-                player.position.y + 0.3,
+                player.position.x,
+                player.position.y + 1.0,
                 player.position.z
             );
         }
@@ -1418,11 +1425,18 @@
                 const dz = player.position.z - enemy.mesh.position.z;
                 const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
                 
-                // AI移动
-                if (dist > 1.2 && dist < 20) {
+                // AI移动 - 只在X轴上移动，保持在Z=0的平行线上
+                if (dist > 1.2 && dist < 15) {
+                    // 只向玩家靠近，保持在Z=0
                     enemy.mesh.position.x += (dx / dist) * enemy.speed;
-                    enemy.mesh.position.z += (dz / dist) * enemy.speed * 0.5;
-                    enemy.mesh.lookAt(player.position.x, enemy.mesh.position.y, player.position.z);
+                    // 保持在 Z=0
+                    enemy.mesh.position.z = 0;
+                    // 面向玩家（只看X轴方向）
+                    const lookX = player.position.x;
+                    enemy.mesh.lookAt(lookX, enemy.mesh.position.y, 0);
+                } else {
+                    // 保持在Z=0线
+                    enemy.mesh.position.z = 0;
                 }
                 
                 // 攻击玩家
@@ -1603,45 +1617,44 @@
             // 创建剑气特效
             createSlashEffect(config);
             
-            // 检测命中
+            // 检测命中 - 所有怪物都在同一条线上（Z=0）
             let hitCount = 0;
             enemies.forEach(enemy => {
                 if (enemy.health <= 0) return;
                 
+                // 只检测X轴距离（因为都在Z=0）
                 const dx = enemy.mesh.position.x - player.position.x;
-                const dz = enemy.mesh.position.z - player.position.z;
-                const dist = Math.sqrt(dx*dx + dz*dz);
+                const xDist = Math.abs(dx);
                 
-                if (dist < config.range) {
-                    const angle = Math.atan2(dz, dx);
-                    const playerAngle = player.rotation.y === 0 ? 0 : Math.PI;
-                    let angleDiff = Math.abs(angle - playerAngle);
-                    if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+                // 检查怪物是否在玩家前方
+                const facingRight = player.rotation.y === 0;
+                const enemyInFront = facingRight ? dx > 0 : dx < 0;
+                
+                if (xDist < config.range && enemyInFront) {
+                    const damage = config.damage;
+                    enemy.health -= damage;
+                    enemy.hitFlash = 8;
+                    enemy.isHit = true;
+                    enemy.hitTime = Date.now();
+                    hitCount++;
                     
-                    if (angleDiff < Math.PI / 1.8) {
-                        const damage = config.damage;
-                        enemy.health -= damage;
-                        enemy.hitFlash = 8;
-                        enemy.isHit = true;
-                        enemy.hitTime = Date.now();
-                        hitCount++;
-                        
-                        // 击退
-                        const knockback = 0.4 + weaponLevel * 0.1;
-                        enemy.mesh.position.x += dx / dist * knockback;
-                        enemy.mesh.position.z += dz / dist * knockback;
-                        
-                        // 受伤特效
-                        createEnemyHitEffect(enemy.mesh.position, config.color, damage);
-                        showDamageNumber(enemy.mesh.position, damage);
-                        
-                        comboCount++;
-                        comboTimer = 2500;
-                        
-                        if (comboCount > 1 && comboCount % 5 === 0) {
-                            score += comboCount * 5;
-                            showComboText(comboCount);
-                        }
+                    // 击退 - 在X轴上击退
+                    const knockback = 0.5 + weaponLevel * 0.15;
+                    const knockDir = facingRight ? 1 : -1;
+                    enemy.mesh.position.x += knockDir * knockback;
+                    // 保持在Z=0
+                    enemy.mesh.position.z = 0;
+                    
+                    // 受伤特效
+                    createEnemyHitEffect(enemy.mesh.position, config.color, damage);
+                    showDamageNumber(enemy.mesh.position, damage);
+                    
+                    comboCount++;
+                    comboTimer = 2500;
+                    
+                    if (comboCount > 1 && comboCount % 5 === 0) {
+                        score += comboCount * 5;
+                        showComboText(comboCount);
                     }
                 }
             });
@@ -1679,6 +1692,7 @@
                     const facingRight = player.rotation.y === 0;
                     slash.position.copy(player.position);
                     slash.position.y += 0.8 + i * 0.3;
+                    slash.position.z = 0; // 在Z=0平面上
                     slash.position.x += facingRight ? 0.8 : -0.8;
                     slash.rotation.x = -Math.PI / 2;
                     slash.rotation.z = facingRight ? -Math.PI / 3 : Math.PI * 0.67;
@@ -1688,12 +1702,13 @@
                     // 剑气飞行
                     let distance = 0;
                     const maxDistance = config.range * 2;
-                    const speed = 0.4;
+                    const speed = 0.5;
                     const direction = facingRight ? 1 : -1;
                     
                     const anim = () => {
                         distance += speed;
                         slash.position.x += speed * direction;
+                        slash.position.z = 0; // 保持在Z=0
                         slash.scale.multiplyScalar(1.02);
                         slash.material.opacity -= 0.015;
                         
