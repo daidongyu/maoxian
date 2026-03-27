@@ -90,19 +90,6 @@
         border: 1px solid rgba(255,255,255,0.2);
       }
 
-      #playerHead {
-        position: absolute;
-        bottom: 100px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        border: 4px solid rgba(255,255,255,0.6);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-        object-fit: cover;
-      }
-
       #startScreen,
       #gameOverScreen,
       #levelCompleteScreen,
@@ -341,7 +328,6 @@
         空格: 跳跃<br />
         J / 点击: 攻击
       </div>
-      <img id="playerHead" src="./cuicui.jpg" alt="翠翠" />
     </div>
 
     <div id="mobileControls">
@@ -564,6 +550,41 @@
         body.position.y = 0.6
         body.castShadow = true
         group.add(body)
+
+        // 头部 - 使用翠翠的2D图片Sprite，始终面向玩家
+        const textureLoader = new THREE.TextureLoader()
+        textureLoader.load(
+          './cuicui.jpg',
+          (texture) => {
+            const material = new THREE.SpriteMaterial({ map: texture })
+            const head = new THREE.Sprite(material)
+            head.scale.set(6, 6, 1)
+            head.position.y = 1.4
+            head.name = 'head'
+            group.add(head)
+            // 替换原来的head
+            const oldHead = group.getObjectByName('head')
+            if (oldHead) group.remove(oldHead)
+          },
+          undefined,
+          () => {
+            // 加载失败时使用默认头像
+            const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac })
+            const headGeo = new THREE.SphereGeometry(0.5, 16, 16)
+            const head = new THREE.Mesh(headGeo, headMat)
+            head.position.y = 1.4
+            head.name = 'head'
+            group.add(head)
+          },
+        )
+
+        // 默认头像（等待图片加载）
+        const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac })
+        const headGeo = new THREE.SphereGeometry(0.5, 16, 16)
+        const head = new THREE.Mesh(headGeo, headMat)
+        head.position.y = 1.4
+        head.name = 'head'
+        group.add(head)
 
         // 手臂
         const armGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.8, 8)
