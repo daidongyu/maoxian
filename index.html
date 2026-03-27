@@ -1,2161 +1,1794 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>翠翠大冒险 - CuiCui Adventure</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <title>翠翠大冒险</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        overflow: hidden;
+        background: #87ceeb;
+        font-family: 'Microsoft YaHei', sans-serif;
+        touch-action: none;
+      }
+
+      #gameCanvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      #ui {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+
+      #healthBar {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        width: 200px;
+        height: 25px;
+        background: rgba(0, 0, 0, 0.5);
+        border: 2px solid #fff;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      #healthFill {
+        height: 100%;
+        width: 100%;
+        background: linear-gradient(90deg, #ff4444, #ff8844);
+        transition: width 0.3s;
+      }
+
+      #scoreBoard {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        color: #fff;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        font-size: 18px;
+        text-align: right;
+      }
+
+      #levelInfo {
+        position: absolute;
+        top: 60px;
+        left: 20px;
+        color: #ffd700;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        font-size: 20px;
+        font-weight: bold;
+      }
+
+      #weaponInfo {
+        position: absolute;
+        top: 95px;
+        left: 20px;
+        color: #fff;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        font-size: 15px;
+        background: rgba(0, 0, 0, 0.4);
+        padding: 5px 10px;
+        border-radius: 8px;
+      }
+
+      #startScreen,
+      #gameOverScreen,
+      #levelCompleteScreen,
+      #victoryScreen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        pointer-events: auto;
+        z-index: 100;
+      }
+
+      #gameOverScreen,
+      #levelCompleteScreen,
+      #victoryScreen {
+        display: none;
+      }
+
+      .title {
+        font-size: 48px;
+        color: #ffd700;
+        text-shadow:
+          0 0 20px #ff6b6b,
+          0 0 40px #ff6b6b;
+        margin-bottom: 20px;
+        animation: glow 2s ease-in-out infinite;
+      }
+
+      @keyframes glow {
+        0%,
+        100% {
+          text-shadow:
+            0 0 20px #ff6b6b,
+            0 0 40px #ff6b6b;
         }
-        
-        body {
-            overflow: hidden;
-            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 50%, #90EE90 100%);
-            font-family: 'Microsoft YaHei', sans-serif;
-            touch-action: none;
-            position: fixed;
-            width: 100%;
-            height: 100%;
+        50% {
+          text-shadow:
+            0 0 30px #ffd700,
+            0 0 60px #ffd700;
         }
-        
-        #gameCanvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-            position: fixed;
-            top: 0;
-            left: 0;
+      }
+
+      @keyframes levelUpAnim {
+        0% {
+          transform: translate(-50%, -50%) scale(0.5);
+          opacity: 0;
         }
-        
-        #ui {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
+        20% {
+          transform: translate(-50%, -50%) scale(1.2);
+          opacity: 1;
         }
-        
-        #healthBar {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            width: 220px;
-            height: 28px;
-            background: rgba(0,0,0,0.4);
-            border: 2px solid #fff;
-            border-radius: 14px;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        80% {
+          transform: translate(-50%, -50%) scale(1);
+          opacity: 1;
         }
-        
-        #healthFill {
-            height: 100%;
-            width: 100%;
-            background: linear-gradient(90deg, #ff4444, #ff8844, #ffaa44);
-            transition: width 0.3s ease;
-            box-shadow: inset 0 0 10px rgba(255,255,255,0.3);
+        100% {
+          transform: translate(-50%, -50%) scale(1.5);
+          opacity: 0;
         }
-        
-        #expBar {
-            position: absolute;
-            top: 52px;
-            left: 20px;
-            width: 180px;
-            height: 12px;
-            background: rgba(0,0,0,0.4);
-            border: 1px solid #fff;
-            border-radius: 6px;
-            overflow: hidden;
+      }
+
+      @keyframes comboAnim {
+        0% {
+          transform: translate(-50%, -50%) scale(0.5);
+          opacity: 0;
         }
-        
-        #expFill {
-            height: 100%;
-            width: 0%;
-            background: linear-gradient(90deg, #4488ff, #44ff88);
-            transition: width 0.3s ease;
+        30% {
+          transform: translate(-50%, -50%) scale(1.3);
+          opacity: 1;
         }
-        
-        #scoreBoard {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            color: #fff;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5);
-            font-size: 18px;
-            text-align: right;
-            background: rgba(0,0,0,0.3);
-            padding: 10px 15px;
-            border-radius: 10px;
+        100% {
+          transform: translate(-50%, -100%) scale(1);
+          opacity: 0;
         }
-        
-        #levelInfo {
-            position: absolute;
-            top: 70px;
-            left: 20px;
-            color: #ffd700;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            font-size: 22px;
-            font-weight: bold;
-        }
-        
-        #weaponInfo {
-            position: absolute;
-            top: 100px;
-            left: 20px;
-            color: #00ffff;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            font-size: 18px;
-            font-weight: bold;
-            background: rgba(0,0,0,0.3);
-            padding: 8px 15px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.3);
-        }
-        
-        #startScreen, #gameOverScreen, #levelCompleteScreen, #victoryScreen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.85);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            pointer-events: auto;
-            z-index: 100;
-        }
-        
-        #gameOverScreen, #levelCompleteScreen, #victoryScreen {
-            display: none;
-        }
-        
+      }
+
+      .subtitle {
+        font-size: 20px;
+        color: #fff;
+        margin-bottom: 30px;
+        text-align: center;
+        max-width: 600px;
+        line-height: 1.6;
+      }
+
+      .btn {
+        padding: 15px 40px;
+        font-size: 24px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        border: none;
+        border-radius: 30px;
+        cursor: pointer;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
+        margin: 10px;
+      }
+
+      .btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 30px rgba(102, 126, 234, 0.6);
+      }
+
+      #controls {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 14px;
+        line-height: 1.8;
+      }
+
+      /* 移动端控制按钮 */
+      #mobileControls {
+        position: absolute;
+        bottom: 20px;
+        width: 100%;
+        display: none;
+        pointer-events: auto;
+        padding: 0 20px;
+      }
+
+      .controlRow {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 10px;
+      }
+
+      .controlBtn {
+        width: 60px;
+        height: 60px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        border-radius: 50%;
+        color: #fff;
+        font-size: 24px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        user-select: none;
+        touch-action: manipulation;
+      }
+
+      .controlBtn:active {
+        background: rgba(255, 255, 255, 0.4);
+      }
+
+      .controlBtn.large {
+        width: 80px;
+        height: 80px;
+        font-size: 32px;
+        background: rgba(255, 100, 100, 0.3);
+      }
+
+      .controlBtn.attack {
+        background: rgba(255, 200, 50, 0.4);
+      }
+
+      .dPad {
+        display: flex;
+        gap: 10px;
+      }
+
+      #damageOverlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(
+          circle,
+          transparent 30%,
+          rgba(255, 0, 0, 0.3) 100%
+        );
+        opacity: 0;
+        transition: opacity 0.2s;
+        pointer-events: none;
+      }
+
+      .enemyLabel {
+        position: absolute;
+        color: #ff6b6b;
+        font-size: 14px;
+        font-weight: bold;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        pointer-events: none;
+        transform: translate(-50%, -100%);
+      }
+
+      @media (max-width: 768px) {
         .title {
-            font-size: 56px;
-            color: #ffd700;
-            text-shadow: 0 0 20px #ff6b6b, 0 0 40px #ff6b6b, 0 0 60px #ffd700;
-            margin-bottom: 20px;
-            animation: glow 2s ease-in-out infinite;
+          font-size: 32px;
         }
-        
-        @keyframes glow {
-            0%, 100% { text-shadow: 0 0 20px #ff6b6b, 0 0 40px #ff6b6b; }
-            50% { text-shadow: 0 0 30px #ffd700, 0 0 60px #ffd700, 0 0 80px #ff6b6b; }
-        }
-        
         .subtitle {
-            font-size: 22px;
-            color: #fff;
-            margin-bottom: 30px;
-            text-align: center;
-            max-width: 700px;
-            line-height: 1.8;
+          font-size: 14px;
+          padding: 0 20px;
         }
-        
-        .btn {
-            padding: 18px 50px;
-            font-size: 26px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #fff;
-            border: none;
-            border-radius: 35px;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            margin: 10px;
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-        }
-        
-        .btn:hover {
-            transform: scale(1.08);
-            box-shadow: 0 0 40px rgba(102, 126, 234, 0.8);
-        }
-        
         #controls {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            color: rgba(255,255,255,0.9);
-            font-size: 15px;
-            line-height: 2;
-            background: rgba(0,0,0,0.4);
-            padding: 15px 20px;
-            border-radius: 10px;
+          display: none;
         }
-        
         #mobileControls {
-            position: absolute;
-            bottom: 20px;
-            width: 100%;
-            display: none;
-            pointer-events: auto;
-            padding: 0 20px;
+          display: block;
         }
-        
-        .controlRow {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            margin-bottom: 10px;
+        #scoreBoard {
+          font-size: 14px;
         }
-        
-        .controlBtn {
-            width: 65px;
-            height: 65px;
-            background: rgba(255,255,255,0.25);
-            border: 2px solid rgba(255,255,255,0.6);
-            border-radius: 50%;
-            color: #fff;
-            font-size: 28px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            user-select: none;
-            touch-action: manipulation;
-            backdrop-filter: blur(5px);
+        #levelInfo {
+          font-size: 16px;
         }
-        
-        .controlBtn:active {
-            background: rgba(255,255,255,0.5);
-            transform: scale(0.95);
-        }
-        
-        .controlBtn.large {
-            width: 85px;
-            height: 85px;
-            font-size: 36px;
-            background: rgba(255,100,100,0.4);
-        }
-        
-        .controlBtn.attack {
-            background: rgba(255,200,50,0.5);
-            box-shadow: 0 0 20px rgba(255,200,50,0.4);
-        }
-        
-        .dPad {
-            display: flex;
-            gap: 12px;
-        }
-        
-        .dPadVertical {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        
-        #damageOverlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle, transparent 30%, rgba(255,0,0,0.4) 100%);
-            opacity: 0;
-            transition: opacity 0.15s;
-            pointer-events: none;
-        }
-        
-        .enemyLabel {
-            position: absolute;
-            color: #ff6b6b;
-            font-size: 15px;
-            font-weight: bold;
-            text-shadow: 1px 1px 3px rgba(0,0,0,0.9), 0 0 5px rgba(0,0,0,0.8);
-            pointer-events: none;
-            transform: translate(-50%, -100%);
-            background: rgba(0,0,0,0.4);
-            padding: 2px 8px;
-            border-radius: 10px;
-        }
-        
-        .weaponUpgradePopup {
-            position: absolute;
-            left: 50%;
-            top: 30%;
-            transform: translate(-50%, -50%);
-            color: #ffd700;
-            font-size: 36px;
-            font-weight: bold;
-            text-shadow: 0 0 20px #ff6b6b, 0 0 40px #ff6b6b;
-            pointer-events: none;
-            animation: popupAnim 2s ease-out forwards;
-            text-align: center;
-        }
-        
-        @keyframes popupAnim {
-            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-            20% { opacity: 1; transform: translate(-50%, -80%) scale(1.2); }
-            80% { opacity: 1; transform: translate(-50%, -100%) scale(1); }
-            100% { opacity: 0; transform: translate(-50%, -120%) scale(1); }
-        }
-        
-        .damageNumber {
-            position: absolute;
-            color: #ff0000;
-            font-size: 24px;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            pointer-events: none;
-            animation: damageFloat 1s ease-out forwards;
-        }
-        
-        @keyframes damageFloat {
-            0% { opacity: 1; transform: translate(-50%, -50%) scale(0.5); }
-            50% { opacity: 1; transform: translate(-50%, -100%) scale(1.2); }
-            100% { opacity: 0; transform: translate(-50%, -150%) scale(1); }
-        }
-        
-        @media (max-width: 768px) {
-            .title { font-size: 38px; }
-            .subtitle { font-size: 16px; padding: 0 20px; }
-            #controls { display: none; }
-            #mobileControls { display: block; }
-            #scoreBoard { font-size: 14px; }
-            #levelInfo { font-size: 18px; }
-            #weaponInfo { font-size: 14px; }
-            #playerFace {
-                width: 70px !important;
-                height: 95px !important;
-                border-width: 2px !important;
-            }
-        }
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <canvas id="gameCanvas"></canvas>
-    
+
     <div id="ui">
-        <div id="healthBar">
-            <div id="healthFill"></div>
-        </div>
-        <div id="expBar">
-            <div id="expFill"></div>
-        </div>
-        <div id="levelInfo">第 1 关 - 草原启程</div>
-        <div id="weaponInfo">🗡️ 木剑 Lv.1</div>
-        <div id="scoreBoard">
-            分数: <span id="score">0</span><br>
-            击杀: <span id="kills">0</span>
-        </div>
-        <div id="controls">
-            WASD / 方向键: 移动<br>
-            空格: 跳跃 | C: 下蹲<br>
-            J / 点击: 攻击
-        </div>
+      <div id="healthBar">
+        <div id="healthFill"></div>
+      </div>
+      <div id="levelInfo">准备开始...</div>
+      <div id="weaponInfo">🗡️ 木剑 Lv.1</div>
+      <div id="scoreBoard">
+        分数: <span id="score">0</span><br />
+        击杀: <span id="kills">0</span>
+      </div>
+      <div id="controls">
+        WASD / 方向键: 移动<br />
+        空格: 跳跃<br />
+        J / 点击: 攻击
+      </div>
     </div>
-    
+
     <div id="mobileControls">
-        <div class="controlRow">
-            <div class="dPad">
-                <div class="controlBtn" id="btnLeft">←</div>
-                <div class="dPadVertical">
-                    <div class="controlBtn" id="btnJump">↑</div>
-                    <div class="controlBtn" id="btnCrouch">↓</div>
-                </div>
-                <div class="controlBtn" id="btnRight">→</div>
-            </div>
-            <div class="controlBtn large attack" id="btnAttack">⚔️</div>
+      <div class="controlRow">
+        <div class="dPad">
+          <div class="controlBtn" id="btnLeft">←</div>
+          <div class="controlBtn" id="btnRight">→</div>
         </div>
+        <div class="controlBtn large" id="btnJump">↑</div>
+        <div class="controlBtn large attack" id="btnAttack">⚔️</div>
+      </div>
     </div>
-    
+
     <div id="damageOverlay"></div>
-    
+
     <div id="startScreen">
-        <h1 class="title">🌿 翠翠大冒险</h1>
-        <p class="subtitle">
-            翠翠手持长剑，踏上草原冒险之旅<br>
-            击败二叔、二婶、嘉姐、万总等怪物升级武器<br>
-            10级神兵等你解锁，挑战三关成为传说！
-        </p>
-        <button class="btn" onclick="startGame()">开始冒险</button>
+      <h1 class="title">🌿 翠翠草原大冒险</h1>
+      <p class="subtitle">
+        翠翠来到了一片美丽的草原<br />
+        击败二叔、二婶、嘉姐、万总等怪物<br />
+        升级武器，挑战五关！<br />
+        <br />
+        💡 提示：只会被怪物攻击致死哦~
+      </p>
+      <button class="btn" onclick="startGame()">开始冒险</button>
     </div>
-    
+
     <div id="gameOverScreen">
-        <h1 class="title">💀 游戏结束</h1>
-        <p class="subtitle" id="gameOverText"></p>
-        <button class="btn" onclick="restartGame()">重新开始</button>
+      <h1 class="title">💀 游戏结束</h1>
+      <p class="subtitle" id="gameOverText"></p>
+      <button class="btn" onclick="restartGame()">重新开始</button>
     </div>
-    
+
     <div id="levelCompleteScreen">
-        <h1 class="title">🎉 关卡完成！</h1>
-        <p class="subtitle" id="levelCompleteText"></p>
-        <button class="btn" onclick="nextLevel()">下一关</button>
+      <h1 class="title">🎉 关卡完成！</h1>
+      <p class="subtitle" id="levelCompleteText"></p>
+      <button class="btn" onclick="nextLevel()">下一关</button>
     </div>
-    
+
     <div id="victoryScreen">
-        <h1 class="title">🏆 通关大吉！</h1>
-        <p class="subtitle" id="victoryText"></p>
-        <button class="btn" onclick="restartGame()">再玩一次</button>
+      <h1 class="title">🏆 通关大吉！</h1>
+      <p class="subtitle" id="victoryText"></p>
+      <button class="btn" onclick="restartGame()">再玩一次</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        // ==================== 游戏全局变量 ====================
-        let scene, camera, renderer;
-        let player, playerVelocity = new THREE.Vector3();
-        let isJumping = false, isCrouching = false, isAttacking = false;
-        let platforms = [], enemies = [], particles = [], grassBlades = [], clouds = [];
-        let weaponLevel = 1, score = 0, kills = 0, currentLevel = 1;
-        let playerHealth = 100, maxHealth = 100;
-        let exp = 0, expToNext = 3;
-        let gameRunning = false;
-        let enemyLabels = [];
-        let animationId;
-        let keys = {};
-        let sword, attackEffects = [];
-        let comboCount = 0, comboTimer = 0;
-        let invincibleTime = 0;
-        let damageNumbers = [];
-        
-        // 10级武器配置
-        const weaponConfigs = {
-            1: { name: '🗡️ 木剑', color: 0x8B4513, damage: 30, range: 2.5, glow: 0, slashSize: 1 },
-            2: { name: '⚔️ 铁剑', color: 0x708090, damage: 45, range: 2.8, glow: 0.2, slashSize: 1.2 },
-            3: { name: '🔥 火焰剑', color: 0xff4400, damage: 60, range: 3.0, glow: 0.4, slashSize: 1.4 },
-            4: { name: '⚡ 雷霆剑', color: 0x00ffff, damage: 80, range: 3.3, glow: 0.6, slashSize: 1.6 },
-            5: { name: '💀 暗影刃', color: 0x9400D3, damage: 100, range: 3.5, glow: 0.7, slashSize: 1.8 },
-            6: { name: '🌟 圣光剑', color: 0xFFD700, damage: 125, range: 3.8, glow: 0.8, slashSize: 2.0 },
-            7: { name: '🐉 龙牙剑', color: 0xDC143C, damage: 150, range: 4.0, glow: 0.9, slashSize: 2.2 },
-            8: { name: '❄️ 冰霜剑', color: 0x00CED1, damage: 180, range: 4.3, glow: 1.0, slashSize: 2.4 },
-            9: { name: '☀️ 日耀剑', color: 0xFF4500, damage: 220, range: 4.5, glow: 1.2, slashSize: 2.6 },
-            10: { name: '👑 翠翠传说', color: 0xFFD700, damage: 300, range: 5.0, glow: 1.5, slashSize: 3.0, ultimate: true }
-        };
-        
-        // 敌人配置
-        const enemyTypes = {
-            '二叔': { color: 0x4a5568, health: 50, damage: 8, speed: 0.025, scale: 1.1, exp: 1 },
-            '二婶': { color: 0xe53e3e, health: 40, damage: 10, speed: 0.035, scale: 0.95, exp: 1 },
-            '嘉姐': { color: 0x805ad5, health: 70, damage: 12, speed: 0.04, scale: 1.05, exp: 2 },
-            '万总': { color: 0x38a169, health: 120, damage: 15, speed: 0.02, scale: 1.3, exp: 3 },
-            '小喽啰': { color: 0x718096, health: 25, damage: 5, speed: 0.03, scale: 0.85, exp: 1 },
-            '精英怪': { color: 0xd69e2e, health: 100, damage: 18, speed: 0.045, scale: 1.15, exp: 2 }
-        };
-        
-        // ==================== 初始化 ====================
-        function init() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87CEEB);
-            scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
-            
-            // 检测是否移动端
-            const isMobile = window.innerWidth < 768;
-            const fov = isMobile ? 75 : 60;
-            
-            camera = new THREE.PerspectiveCamera(fov, window.innerWidth / window.innerHeight, 0.1, 1000);
-            // 设置初始相机位置
-            camera.position.set(0, 3.5, 8);
-            
-            renderer = new THREE.WebGLRenderer({ 
-                canvas: document.getElementById('gameCanvas'),
-                antialias: !isMobile, // 移动端关闭抗锯齿提高性能
-                alpha: true,
-                powerPreference: 'high-performance'
-            });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            
-            // 环境光
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
-            
-            // 阳光
-            const sunLight = new THREE.DirectionalLight(0xfff5e6, 1.0);
-            sunLight.position.set(20, 30, 10);
-            sunLight.castShadow = true;
-            sunLight.shadow.camera.left = -50;
-            sunLight.shadow.camera.right = 50;
-            sunLight.shadow.camera.top = 50;
-            sunLight.shadow.camera.bottom = -50;
-            sunLight.shadow.mapSize.width = 4096;
-            sunLight.shadow.mapSize.height = 4096;
-            sunLight.shadow.bias = -0.0001;
-            scene.add(sunLight);
-            
-            // 事件监听
-            window.addEventListener('resize', onWindowResize);
-            document.addEventListener('keydown', (e) => keys[e.code] = true);
-            document.addEventListener('keyup', (e) => keys[e.code] = false);
-            document.addEventListener('mousedown', onMouseDown);
-            
-            setupMobileControls();
-            createBeautifulEnvironment();
-            animate();
+      // ==================== 游戏全局变量 ====================
+      let scene, camera, renderer
+      let player,
+        playerVelocity = new THREE.Vector3()
+      let isJumping = false,
+        isAttacking = false
+      let platforms = [],
+        enemies = [],
+        particles = []
+      let weaponLevel = 1,
+        score = 0,
+        kills = 0,
+        currentLevel = 1
+      let playerHealth = 100,
+        maxHealth = 100
+      let gameRunning = false
+      let cameraOffset = new THREE.Vector3(0, 8, 15)
+      let enemyLabels = []
+      let animationId
+      let keys = {}
+      let mouse = new THREE.Vector2()
+      let raycaster = new THREE.Raycaster()
+      let sword,
+        swordTrail = []
+      let comboCount = 0,
+        comboTimer = 0
+
+        // 武器配置 - 10个等级
+      const weaponConfigs = {
+        1: { name: '🗡️ 木剑', color: 0x8b4513, damage: 25, range: 3, glow: 0, effect: null },
+        2: { name: '⚔️ 铁剑', color: 0x708090, damage: 32, range: 3.2, glow: 0.1, effect: null },
+        3: { name: '🔥 火焰剑', color: 0xff4400, damage: 42, range: 3.5, glow: 0.3, effect: 'fire' },
+        4: { name: '⚡ 闪电剑', color: 0x00aaff, damage: 55, range: 3.8, glow: 0.4, effect: 'lightning' },
+        5: { name: '❄️ 寒冰剑', color: 0x00ffff, damage: 70, range: 4, glow: 0.5, effect: 'ice' },
+        6: { name: '🌿 毒藤剑', color: 0x00ff00, damage: 88, range: 4.2, glow: 0.6, effect: 'poison' },
+        7: { name: '💎 水晶剑', color: 0xff00ff, damage: 110, range: 4.5, glow: 0.7, effect: 'crystal' },
+        8: { name: '🌟 星辰剑', color: 0xffff00, damage: 135, range: 4.8, glow: 0.8, effect: 'star' },
+        9: { name: '💀 暗黑剑', color: 0x660066, damage: 165, range: 5, glow: 0.9, effect: 'dark' },
+        10: { name: '👑 传说圣剑', color: 0xffd700, damage: 200, range: 5.5, glow: 1.0, effect: 'holy' },
+      }
+
+      // 敌人配置
+      const enemyTypes = {
+        二叔: {
+          color: 0x4a5568,
+          health: 60,
+          damage: 10,
+          speed: 0.03,
+          scale: 1.2,
+        },
+        二婶: {
+          color: 0xe53e3e,
+          health: 50,
+          damage: 12,
+          speed: 0.04,
+          scale: 1.0,
+        },
+        嘉姐: {
+          color: 0x805ad5,
+          health: 80,
+          damage: 15,
+          speed: 0.05,
+          scale: 1.1,
+        },
+        万总: {
+          color: 0x38a169,
+          health: 150,
+          damage: 20,
+          speed: 0.02,
+          scale: 1.4,
+        },
+      }
+
+      // ==================== 初始化 ====================
+      function init() {
+        // 场景 - 草原背景
+        scene = new THREE.Scene()
+        scene.background = new THREE.Color(0x87ceeb) // 天空蓝
+        scene.fog = new THREE.Fog(0x90ee90, 20, 80) // 草地绿雾
+
+        // 相机
+        camera = new THREE.PerspectiveCamera(
+          60,
+          window.innerWidth / window.innerHeight,
+          0.1,
+          1000,
+        )
+        camera.position.copy(cameraOffset)
+
+        // 渲染器
+        renderer = new THREE.WebGLRenderer({
+          canvas: document.getElementById('gameCanvas'),
+          antialias: true,
+          alpha: true,
+        })
+        renderer.setSize(window.innerWidth, window.innerHeight)
+        renderer.shadowMap.enabled = true
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+        // 灯光 - 草原阳光效果
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8)
+        scene.add(ambientLight)
+
+        const dirLight = new THREE.DirectionalLight(0xffffcc, 1.0)
+        dirLight.position.set(10, 20, 10)
+        dirLight.castShadow = true
+        dirLight.shadow.camera.left = -50
+        dirLight.shadow.camera.right = 50
+        dirLight.shadow.camera.top = 50
+        dirLight.shadow.camera.bottom = -50
+        dirLight.shadow.mapSize.width = 2048
+        dirLight.shadow.mapSize.height = 2048
+        scene.add(dirLight)
+
+        // 事件监听
+        window.addEventListener('resize', onWindowResize)
+        document.addEventListener('keydown', (e) => (keys[e.code] = true))
+        document.addEventListener('keyup', (e) => (keys[e.code] = false))
+        document.addEventListener('mousedown', onMouseDown)
+        document.addEventListener('touchstart', onTouchStart, {
+          passive: false,
+        })
+
+        // 移动端控制
+        setupMobileControls()
+
+        // 开始渲染循环
+        animate()
+      }
+
+      function setupMobileControls() {
+        const btnLeft = document.getElementById('btnLeft')
+        const btnRight = document.getElementById('btnRight')
+        const btnJump = document.getElementById('btnJump')
+        const btnAttack = document.getElementById('btnAttack')
+
+        const addTouch = (btn, code) => {
+          btn.addEventListener('touchstart', (e) => {
+            e.preventDefault()
+            keys[code] = true
+          })
+          btn.addEventListener('touchend', (e) => {
+            e.preventDefault()
+            keys[code] = false
+          })
+          btn.addEventListener('mousedown', () => (keys[code] = true))
+          btn.addEventListener('mouseup', () => (keys[code] = false))
         }
-        
-        function setupMobileControls() {
-            const btnLeft = document.getElementById('btnLeft');
-            const btnRight = document.getElementById('btnRight');
-            const btnJump = document.getElementById('btnJump');
-            const btnCrouch = document.getElementById('btnCrouch');
-            const btnAttack = document.getElementById('btnAttack');
-            
-            const addTouch = (btn, code) => {
-                btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[code] = true; });
-                btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[code] = false; });
-                btn.addEventListener('mousedown', () => keys[code] = true);
-                btn.addEventListener('mouseup', () => keys[code] = false);
-            };
-            
-            addTouch(btnLeft, 'ArrowLeft');
-            addTouch(btnRight, 'ArrowRight');
-            addTouch(btnJump, 'Space');
-            addTouch(btnCrouch, 'KeyC');
-            btnAttack.addEventListener('touchstart', (e) => { e.preventDefault(); attack(); });
-            btnAttack.addEventListener('mousedown', attack);
+
+        addTouch(btnLeft, 'ArrowLeft')
+        addTouch(btnRight, 'ArrowRight')
+        addTouch(btnJump, 'Space')
+        btnAttack.addEventListener('touchstart', (e) => {
+          e.preventDefault()
+          attack()
+        })
+        btnAttack.addEventListener('mousedown', attack)
+      }
+
+      // ==================== 创建玩家 ====================
+      function createPlayer() {
+        const group = new THREE.Group()
+
+        // 身体
+        const bodyGeo = new THREE.CylinderGeometry(0.4, 0.3, 1.2, 8)
+        const bodyMat = new THREE.MeshStandardMaterial({
+          color: 0x4ade80, // 绿色衣服
+          roughness: 0.3,
+          metalness: 0.2,
+        })
+        const body = new THREE.Mesh(bodyGeo, bodyMat)
+        body.position.y = 0.6
+        body.castShadow = true
+        group.add(body)
+
+        // 头部 - 使用翠翠的图片作为贴图，始终面向玩家
+        const headGeo = new THREE.SphereGeometry(0.35, 16, 16)
+        const textureLoader = new THREE.TextureLoader()
+        const headMat = new THREE.MeshStandardMaterial({
+          color: 0xffffff,
+          roughness: 0.5,
+        })
+
+        // 加载翠翠图片
+        textureLoader.load(
+          './cuicui.jpg',
+          (texture) => {
+            texture.encoding = THREE.sRGBEncoding
+            headMat.map = texture
+            headMat.needsUpdate = true
+          },
+          undefined,
+          () => {
+            console.log('使用默认头像')
+          },
+        )
+
+        const head = new THREE.Mesh(headGeo, headMat)
+        head.position.y = 1.4
+        head.castShadow = true
+        head.name = 'head'
+        group.add(head)
+
+        // 眼睛
+        const eyeGeo = new THREE.SphereGeometry(0.05, 8, 8)
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 })
+        const leftEye = new THREE.Mesh(eyeGeo, eyeMat)
+        leftEye.position.set(-0.12, 1.45, 0.28)
+        const rightEye = new THREE.Mesh(eyeGeo, eyeMat)
+        rightEye.position.set(0.12, 1.45, 0.28)
+        group.add(leftEye, rightEye)
+
+        // 手臂
+        const armGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.8, 8)
+        const leftArm = new THREE.Mesh(armGeo, bodyMat)
+        leftArm.position.set(-0.5, 0.8, 0)
+        leftArm.rotation.z = 0.3
+        const rightArm = new THREE.Mesh(armGeo, bodyMat)
+        rightArm.position.set(0.5, 0.8, 0)
+        rightArm.rotation.z = -0.3
+        group.add(leftArm, rightArm)
+
+        // 腿
+        const legGeo = new THREE.CylinderGeometry(0.12, 0.1, 0.8, 8)
+        const leftLeg = new THREE.Mesh(
+          legGeo,
+          new THREE.MeshStandardMaterial({ color: 0x2c3e50 }),
+        )
+        leftLeg.position.set(-0.2, 0, 0)
+        const rightLeg = new THREE.Mesh(
+          legGeo,
+          new THREE.MeshStandardMaterial({ color: 0x2c3e50 }),
+        )
+        rightLeg.position.set(0.2, 0, 0)
+        group.add(leftLeg, rightLeg)
+
+        // 创建剑
+        sword = createSword(weaponLevel)
+        sword.position.set(0.6, 0.8, 0.5)
+        sword.rotation.z = -Math.PI / 4
+        group.add(sword)
+
+        // 发光效果
+        const glowGeo = new THREE.SphereGeometry(1.5, 16, 16)
+        const glowMat = new THREE.MeshBasicMaterial({
+          color: weaponConfigs[weaponLevel].color,
+          transparent: true,
+          opacity: 0.1,
+        })
+        const glow = new THREE.Mesh(glowGeo, glowMat)
+        glow.position.y = 0.8
+        glow.name = 'glow'
+        group.add(glow)
+
+        group.position.set(0, 1, 0)
+        scene.add(group)
+
+        player = group
+        player.userData = {
+          velocity: new THREE.Vector3(),
+          leftArm,
+          rightArm,
+          leftLeg,
+          rightLeg,
+          head,
+          glow,
         }
-        
-        // ==================== 优美草原环境 ====================
-        function createBeautifulEnvironment() {
-            // 大面积草地地面
-            const groundGeo = new THREE.PlaneGeometry(300, 60, 60, 20);
-            const groundMat = new THREE.MeshStandardMaterial({ 
-                color: 0x4a7c59,
-                roughness: 1,
-            });
-            
-            const positions = groundGeo.attributes.position.array;
-            for (let i = 2; i < positions.length; i += 3) {
-                positions[i] = Math.random() * 0.3;
+      }
+
+      function createSword(level) {
+        const config = weaponConfigs[level]
+        const group = new THREE.Group()
+
+        // 剑柄
+        const handleGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.4, 8)
+        const handleMat = new THREE.MeshStandardMaterial({ color: 0x4a3728 })
+        const handle = new THREE.Mesh(handleGeo, handleMat)
+        handle.position.y = -0.2
+        group.add(handle)
+
+        // 护手
+        const guardGeo = new THREE.BoxGeometry(0.4, 0.08, 0.15)
+        const guardMat = new THREE.MeshStandardMaterial({
+          color: config.color,
+          emissive: config.color,
+          emissiveIntensity: config.glow,
+        })
+        const guard = new THREE.Mesh(guardGeo, guardMat)
+        group.add(guard)
+
+        // 剑身
+        const bladeLength = 1 + level * 0.15
+        const bladeGeo = new THREE.BoxGeometry(0.12, bladeLength, 0.03)
+        const bladeMat = new THREE.MeshStandardMaterial({
+          color: config.color,
+          emissive: config.color,
+          emissiveIntensity: config.glow,
+          metalness: 0.9,
+          roughness: 0.1,
+        })
+        const blade = new THREE.Mesh(bladeGeo, bladeMat)
+        blade.position.y = bladeLength / 2
+        group.add(blade)
+
+        // 特效粒子
+        if (level >= 3) {
+          const particleGeo = new THREE.BufferGeometry()
+          const particleCount = 20
+          const positions = new Float32Array(particleCount * 3)
+          for (let i = 0; i < particleCount * 3; i += 3) {
+            positions[i] = (Math.random() - 0.5) * 0.3
+            positions[i + 1] = Math.random() * bladeLength
+            positions[i + 2] = (Math.random() - 0.5) * 0.1
+          }
+          particleGeo.setAttribute(
+            'position',
+            new THREE.BufferAttribute(positions, 3),
+          )
+          const particleMat = new THREE.PointsMaterial({
+            color: config.color,
+            size: 0.05,
+            transparent: true,
+            opacity: 0.8,
+          })
+          const particles = new THREE.Points(particleGeo, particleMat)
+          group.add(particles)
+        }
+
+        // 光晕
+        if (config.glow > 0) {
+          const light = new THREE.PointLight(config.color, config.glow, 5)
+          light.position.y = bladeLength / 2
+          group.add(light)
+        }
+
+        return group
+      }
+
+      // ==================== 关卡生成 ====================
+      function generateLevel(level) {
+        // 清除旧关卡
+        platforms.forEach((p) => scene.remove(p))
+        enemies.forEach((e) => {
+          scene.remove(e.mesh)
+          if (e.label) e.label.remove()
+        })
+        platforms = []
+
+        const levelLength = 60 + level * 30
+        const groundY = 0
+
+        // 草原地面
+        const groundMat = new THREE.MeshStandardMaterial({
+          color: 0x228b22,
+          roughness: 0.9,
+        })
+
+        for (let x = -10; x < levelLength; x += 4) {
+          const groundGeo = new THREE.BoxGeometry(4, 1, 20)
+          const ground = new THREE.Mesh(groundGeo, groundMat)
+          ground.position.set(x, groundY - 0.5, 0)
+          ground.receiveShadow = true
+          scene.add(ground)
+          platforms.push(ground)
+
+          // 草原装饰 - 花草
+          if (Math.random() > 0.2) {
+            const grassCount = 3 + Math.floor(Math.random() * 4)
+            for (let i = 0; i < grassCount; i++) {
+              const grassGeo = new THREE.ConeGeometry(0.08 + Math.random() * 0.1, 0.4 + Math.random() * 0.3, 4)
+              const grassColor = Math.random() > 0.3 ? 0x228b22 : (Math.random() > 0.5 ? 0x90ee90 : 0xff69b4)
+              const grassMat = new THREE.MeshStandardMaterial({ color: grassColor })
+              const grass = new THREE.Mesh(grassGeo, grassMat)
+              grass.position.set(
+                x + (Math.random() - 0.5) * 3,
+                0.1,
+                (Math.random() - 0.5) * 15,
+              )
+              grass.rotation.y = Math.random() * Math.PI
+              scene.add(grass)
             }
-            groundGeo.computeVertexNormals();
-            
-            const ground = new THREE.Mesh(groundGeo, groundMat);
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -0.1;
-            ground.receiveShadow = true;
-            scene.add(ground);
-            
-            createGrassField();
-            createClouds();
-            createFlowers();
-            createMountains();
-            createTrees();
-            createAmbientParticles();
+          }
+
+          // 随机树
+          if (Math.random() > 0.85) {
+            createTree(x + (Math.random() - 0.5) * 2, 0, (Math.random() - 0.5) * 12)
+          }
         }
-        
-        function createGrassField() {
-            const grassColors = [0x4a7c59, 0x5a8c69, 0x6a9c79, 0x3a6c49];
-            
-            for (let i = 0; i < 800; i++) {
-                const height = 0.3 + Math.random() * 0.4;
-                const grassGeo = new THREE.ConeGeometry(0.03, height, 4);
-                const grassMat = new THREE.MeshStandardMaterial({ 
-                    color: grassColors[Math.floor(Math.random() * grassColors.length)],
-                    roughness: 0.8
-                });
-                const grass = new THREE.Mesh(grassGeo, grassMat);
-                
-                grass.position.x = (Math.random() - 0.5) * 280;
-                grass.position.z = (Math.random() - 0.5) * 40;
-                grass.position.y = height / 2;
-                grass.rotation.y = Math.random() * Math.PI;
-                grass.rotation.z = (Math.random() - 0.5) * 0.2;
-                grass.scale.x = 0.5 + Math.random() * 0.5;
-                grass.scale.z = 0.5 + Math.random() * 0.5;
-                
-                grassBlades.push({
-                    mesh: grass,
-                    baseRotation: grass.rotation.z,
-                    swaySpeed: 0.5 + Math.random() * 1.5,
-                    swayAmount: 0.05 + Math.random() * 0.1
-                });
-                
-                scene.add(grass);
-            }
+
+        // 生成敌人
+        const enemyCount = 6 + level * 2
+        const enemyNames = Object.keys(enemyTypes)
+
+        for (let i = 0; i < enemyCount; i++) {
+          const name =
+            enemyNames[
+              Math.min(
+                Math.floor(Math.random() * (level + 1)),
+                enemyNames.length - 1,
+              )
+            ]
+          const x = 15 + Math.random() * (levelLength - 30)
+          const enemy = createEnemy(name, x, 1, (Math.random() - 0.5) * 8)
+          enemies.push(enemy)
         }
-        
-        function createClouds() {
-            for (let i = 0; i < 15; i++) {
-                const cloudGroup = new THREE.Group();
-                const puffCount = 3 + Math.floor(Math.random() * 4);
-                
-                for (let j = 0; j < puffCount; j++) {
-                    const puffGeo = new THREE.SphereGeometry(1 + Math.random() * 1.5, 8, 8);
-                    const puffMat = new THREE.MeshBasicMaterial({
-                        color: 0xffffff,
-                        transparent: true,
-                        opacity: 0.7 + Math.random() * 0.2
-                    });
-                    const puff = new THREE.Mesh(puffGeo, puffMat);
-                    puff.position.set(
-                        (Math.random() - 0.5) * 3,
-                        (Math.random() - 0.5) * 1,
-                        (Math.random() - 0.5) * 2
-                    );
-                    cloudGroup.add(puff);
-                }
-                
-                cloudGroup.position.set(
-                    (Math.random() - 0.5) * 200,
-                    15 + Math.random() * 10,
-                    -30 - Math.random() * 40
-                );
-                
-                clouds.push({
-                    mesh: cloudGroup,
-                    speed: 0.01 + Math.random() * 0.02
-                });
-                
-                scene.add(cloudGroup);
-            }
+
+        // 终点旗帜
+        const flagPoleGeo = new THREE.CylinderGeometry(0.1, 0.1, 6, 8)
+        const flagPoleMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 })
+        const flagPole = new THREE.Mesh(flagPoleGeo, flagPoleMat)
+        flagPole.position.set(levelLength, 3, 0)
+        scene.add(flagPole)
+
+        const flagGeo = new THREE.PlaneGeometry(2, 1.2)
+        const flagColor = [0xff4444, 0x44ff44, 0x4444ff, 0xffff44, 0xff44ff][level - 1] || 0xff4444
+        const flagMat = new THREE.MeshStandardMaterial({
+          color: flagColor,
+          side: THREE.DoubleSide,
+        })
+        const flag = new THREE.Mesh(flagGeo, flagMat)
+        flag.position.set(levelLength + 1, 5, 0)
+        flag.name = 'flag'
+        scene.add(flag)
+
+        // 终点光效
+        const endLight = new THREE.PointLight(flagColor, 1.5, 15)
+        endLight.position.set(levelLength, 5, 0)
+        scene.add(endLight)
+
+        // 粒子效果
+        createAmbientParticles()
+      }
+
+      function createTree(x, y, z) {
+        // 树干
+        const trunkGeo = new THREE.CylinderGeometry(0.15, 0.25, 1.5, 8)
+        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 })
+        const trunk = new THREE.Mesh(trunkGeo, trunkMat)
+        trunk.position.set(x, y + 0.75, z)
+        trunk.castShadow = true
+        scene.add(trunk)
+
+        // 树冠
+        const leavesGeo = new THREE.ConeGeometry(0.8, 2, 8)
+        const leavesMat = new THREE.MeshStandardMaterial({ color: 0x228b22 })
+        const leaves = new THREE.Mesh(leavesGeo, leavesMat)
+        leaves.position.set(x, y + 2.5, z)
+        leaves.castShadow = true
+        scene.add(leaves)
+      }
+
+      function createPlatform(x, y, w, h, d, color) {
+        const geo = new THREE.BoxGeometry(w, h, d)
+        const mat = new THREE.MeshStandardMaterial({
+          color: color,
+          roughness: 0.8,
+        })
+        const mesh = new THREE.Mesh(geo, mat)
+        mesh.position.set(x, y, 0)
+        mesh.castShadow = true
+        mesh.receiveShadow = true
+        scene.add(mesh)
+        return mesh
+      }
+
+      function createEnemy(name, x, y, z) {
+        const config = enemyTypes[name]
+        const group = new THREE.Group()
+
+        // 身体
+        const bodyGeo = new THREE.CylinderGeometry(
+          0.35 * config.scale,
+          0.3 * config.scale,
+          0.9 * config.scale,
+          8,
+        )
+        const bodyMat = new THREE.MeshStandardMaterial({ color: config.color })
+        const body = new THREE.Mesh(bodyGeo, bodyMat)
+        body.position.y = 0.45 * config.scale
+        body.castShadow = true
+        group.add(body)
+
+        // 头部
+        const headGeo = new THREE.SphereGeometry(0.25 * config.scale, 12, 12)
+        const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac })
+        const head = new THREE.Mesh(headGeo, headMat)
+        head.position.y = 1.0 * config.scale
+        group.add(head)
+
+        // 愤怒的眼睛
+        const eyeGeo = new THREE.SphereGeometry(0.04 * config.scale, 8, 8)
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 })
+        const leftEye = new THREE.Mesh(eyeGeo, eyeMat)
+        leftEye.position.set(
+          -0.1 * config.scale,
+          1.05 * config.scale,
+          0.2 * config.scale,
+        )
+        const rightEye = new THREE.Mesh(eyeGeo, eyeMat)
+        rightEye.position.set(
+          0.1 * config.scale,
+          1.05 * config.scale,
+          0.2 * config.scale,
+        )
+        group.add(leftEye, rightEye)
+
+        // 武器
+        if (name === '万总') {
+          const weaponGeo = new THREE.BoxGeometry(0.15, 0.8, 0.15)
+          const weaponMat = new THREE.MeshStandardMaterial({ color: 0x8b0000 })
+          const weapon = new THREE.Mesh(weaponGeo, weaponMat)
+          weapon.position.set(
+            0.4 * config.scale,
+            0.6 * config.scale,
+            0.2 * config.scale,
+          )
+          group.add(weapon)
         }
-        
-        function createFlowers() {
-            const flowerColors = [0xff69b4, 0xffd700, 0xff6347, 0x9370db, 0x00ced1];
-            
-            for (let i = 0; i < 100; i++) {
-                const flowerGroup = new THREE.Group();
-                
-                const stemGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.3, 4);
-                const stemMat = new THREE.MeshStandardMaterial({ color: 0x228b22 });
-                const stem = new THREE.Mesh(stemGeo, stemMat);
-                stem.position.y = 0.15;
-                flowerGroup.add(stem);
-                
-                const petalColor = flowerColors[Math.floor(Math.random() * flowerColors.length)];
-                const petalGeo = new THREE.SphereGeometry(0.08, 6, 6);
-                const petalMat = new THREE.MeshStandardMaterial({ color: petalColor });
-                
-                for (let j = 0; j < 5; j++) {
-                    const petal = new THREE.Mesh(petalGeo, petalMat);
-                    const angle = (j / 5) * Math.PI * 2;
-                    petal.position.set(Math.cos(angle) * 0.08, 0.3, Math.sin(angle) * 0.08);
-                    petal.scale.y = 0.5;
-                    flowerGroup.add(petal);
-                }
-                
-                const centerGeo = new THREE.SphereGeometry(0.05, 6, 6);
-                const centerMat = new THREE.MeshStandardMaterial({ color: 0xffff00 });
-                const center = new THREE.Mesh(centerGeo, centerMat);
-                center.position.y = 0.3;
-                flowerGroup.add(center);
-                
-                flowerGroup.position.x = (Math.random() - 0.5) * 250;
-                flowerGroup.position.z = (Math.random() - 0.5) * 35;
-                flowerGroup.rotation.y = Math.random() * Math.PI;
-                
-                scene.add(flowerGroup);
-            }
+
+        group.position.set(x, y, z)
+        scene.add(group)
+
+        // 创建标签
+        const label = document.createElement('div')
+        label.className = 'enemyLabel'
+        label.textContent = name
+        document.getElementById('ui').appendChild(label)
+
+        return {
+          mesh: group,
+          name: name,
+          health: config.health,
+          maxHealth: config.health,
+          damage: config.damage,
+          speed: config.speed,
+          label: label,
+          lastAttack: 0,
+          hitFlash: 0,
         }
-        
-        function createMountains() {
-            for (let i = 0; i < 8; i++) {
-                const height = 20 + Math.random() * 25;
-                const mountainGeo = new THREE.ConeGeometry(15 + Math.random() * 15, height, 4);
-                const mountainMat = new THREE.MeshStandardMaterial({ 
-                    color: 0x5a6b7c,
-                    roughness: 0.9
-                });
-                const mountain = new THREE.Mesh(mountainGeo, mountainMat);
-                mountain.position.set(
-                    (Math.random() - 0.5) * 300,
-                    height / 2 - 5,
-                    -50 - Math.random() * 30
-                );
-                scene.add(mountain);
-            }
+      }
+
+      function createAmbientParticles() {
+        const particleGeo = new THREE.BufferGeometry()
+        const particleCount = 50
+        const positions = new Float32Array(particleCount * 3)
+
+        for (let i = 0; i < particleCount * 3; i += 3) {
+          positions[i] = (Math.random() - 0.5) * 100
+          positions[i + 1] = Math.random() * 15 + 2
+          positions[i + 2] = (Math.random() - 0.5) * 20
         }
-        
-        function createTrees() {
-            for (let i = 0; i < 25; i++) {
-                const treeGroup = new THREE.Group();
-                
-                const trunkHeight = 2 + Math.random() * 1.5;
-                const trunkGeo = new THREE.CylinderGeometry(0.15, 0.25, trunkHeight, 6);
-                const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
-                const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-                trunk.position.y = trunkHeight / 2;
-                trunk.castShadow = true;
-                treeGroup.add(trunk);
-                
-                const leavesColor = Math.random() > 0.3 ? 0x228b22 : 0x006400;
-                const leavesGeo = new THREE.SphereGeometry(1.2 + Math.random() * 0.8, 8, 8);
-                const leavesMat = new THREE.MeshStandardMaterial({ color: leavesColor });
-                const leaves = new THREE.Mesh(leavesGeo, leavesMat);
-                leaves.position.y = trunkHeight + 0.8;
-                leaves.castShadow = true;
-                treeGroup.add(leaves);
-                
-                treeGroup.position.x = (Math.random() - 0.5) * 280;
-                treeGroup.position.z = -15 - Math.random() * 20;
-                
-                if (Math.abs(treeGroup.position.x) > 10) {
-                    scene.add(treeGroup);
-                }
-            }
+
+        particleGeo.setAttribute(
+          'position',
+          new THREE.BufferAttribute(positions, 3),
+        )
+
+        // 蝴蝶/萤火虫效果
+        const particleMat = new THREE.PointsMaterial({
+          color: 0xffcc88,
+          size: 0.15,
+          transparent: true,
+          opacity: 0.7,
+          blending: THREE.AdditiveBlending,
+        })
+
+        const particleSystem = new THREE.Points(particleGeo, particleMat)
+        scene.add(particleSystem)
+        particles.push(particleSystem)
+      }
+
+      // ==================== 游戏逻辑 ====================
+      function startGame() {
+        document.getElementById('startScreen').style.display = 'none'
+        gameRunning = true
+        currentLevel = 1
+        score = 0
+        kills = 0
+        weaponLevel = 1
+        playerHealth = 100
+
+        createPlayer()
+        generateLevel(currentLevel)
+        updateUI()
+      }
+
+      function restartGame() {
+        document.getElementById('gameOverScreen').style.display = 'none'
+        document.getElementById('victoryScreen').style.display = 'none'
+
+        // 清理场景
+        if (player) {
+          scene.remove(player)
+          player = null
         }
-        
-        // ==================== 创建玩家 - 头像完全展示 ====================
-        function createPlayer() {
-            const group = new THREE.Group();
-            
-            // 身体
-            const bodyGeo = new THREE.CylinderGeometry(0.35, 0.28, 0.9, 8);
-            const bodyMat = new THREE.MeshStandardMaterial({ 
-                color: 0x3498db,
-                roughness: 0.4,
-                metalness: 0.1
-            });
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.position.y = 0.45;
-            body.castShadow = true;
-            group.add(body);
-            
-            // 头部 - 简化为一个球体作为头部基础
-            const headGeo = new THREE.SphereGeometry(0.32, 16, 16);
-            const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
-            const head = new THREE.Mesh(headGeo, headMat);
-            head.position.y = 1.25;
-            head.castShadow = true;
-            group.add(head);
-            
-            // 保存头部引用用于更新2D头像位置
-            player.userData.head = head;
-            
-            // 手臂
-            const armGeo = new THREE.CylinderGeometry(0.09, 0.08, 0.7, 8);
-            const leftArm = new THREE.Mesh(armGeo, bodyMat);
-            leftArm.position.set(-0.45, 0.7, 0);
-            leftArm.rotation.z = 0.3;
-            const rightArm = new THREE.Mesh(armGeo, bodyMat);
-            rightArm.position.set(0.45, 0.7, 0);
-            rightArm.rotation.z = -0.3;
-            rightArm.name = 'rightArm';
-            group.add(leftArm, rightArm);
-            
-            // 腿
-            const legGeo = new THREE.CylinderGeometry(0.11, 0.09, 0.7, 8);
-            const legMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50 });
-            const leftLeg = new THREE.Mesh(legGeo, legMat);
-            leftLeg.position.set(-0.18, 0, 0);
-            const rightLeg = new THREE.Mesh(legGeo, legMat);
-            rightLeg.position.set(0.18, 0, 0);
-            group.add(leftLeg, rightLeg);
-            
-            // 创建剑
-            sword = createSword(weaponLevel);
-            sword.position.set(0.5, 0.6, 0.4);
-            sword.rotation.z = -Math.PI / 4;
-            sword.name = 'sword';
-            group.add(sword);
-            
-            // 身体发光效果
-            const glowGeo = new THREE.SphereGeometry(1.2, 16, 16);
-            const glowMat = new THREE.MeshBasicMaterial({
-                color: weaponConfigs[weaponLevel].color,
-                transparent: true,
-                opacity: 0.08
-            });
-            const glow = new THREE.Mesh(glowGeo, glowMat);
-            glow.position.y = 0.7;
-            glow.name = 'playerGlow';
-            group.add(glow);
-            
-            group.position.set(0, 0.5, 0);
-            scene.add(group);
-            
-            player = group;
-            player.userData = { 
-                velocity: new THREE.Vector3(),
-                leftArm, rightArm, leftLeg, rightLeg,
-                glow, sword
-            };
+        enemies.forEach((e) => {
+          if (e.label) e.label.remove()
+        })
+
+        startGame()
+      }
+
+      function nextLevel() {
+        document.getElementById('levelCompleteScreen').style.display = 'none'
+        currentLevel++
+        playerHealth = Math.min(playerHealth + 40, maxHealth)
+
+        // 重置玩家位置
+        player.position.set(0, 1, 0)
+        playerVelocity.set(0, 0, 0)
+
+        generateLevel(currentLevel)
+        updateUI()
+        gameRunning = true
+      }
+
+      function gameOver(reason) {
+        gameRunning = false
+        document.getElementById('gameOverText').textContent =
+          `${reason}\n最终分数: ${score} | 击杀数: ${kills}`
+        document.getElementById('gameOverScreen').style.display = 'flex'
+      }
+
+      function levelComplete() {
+        gameRunning = false
+        const texts = [
+          '',
+          '恭喜通过第一关！草原还很辽阔...',
+          '干得漂亮！第二关完成！',
+          '太厉害了！第三关完成！',
+          '接近终点了！第四关通过！',
+          '最后一关了！冲啊！',
+        ]
+        document.getElementById('levelCompleteText').textContent =
+          `${texts[currentLevel]}\n分数: ${score} | 击杀: ${kills}`
+        document.getElementById('levelCompleteScreen').style.display = 'flex'
+      }
+
+      function victory() {
+        gameRunning = false
+        document.getElementById('victoryText').textContent =
+          `🏆 恭喜翠翠完成大冒险！\n\n` +
+          `最终分数: ${score}\n` +
+          `总击杀数: ${kills}\n` +
+          `最终武器: ${weaponConfigs[weaponLevel].name}\n\n` +
+          `你就是传说中的翠翠勇士！`
+        document.getElementById('victoryScreen').style.display = 'flex'
+      }
+
+      // ==================== 更新逻辑 ====================
+      function updatePlayer(deltaTime) {
+        if (!player) return
+
+        const speed = 0.15
+        const jumpPower = 0.35
+
+        // 移动
+        let moveX = 0
+        if (keys['ArrowLeft'] || keys['KeyA']) moveX = -1
+        if (keys['ArrowRight'] || keys['KeyD']) moveX = 1
+
+        // 应用移动
+        playerVelocity.x = moveX * speed
+
+        // 跳跃
+        if ((keys['Space'] || keys['ArrowUp']) && !isJumping) {
+          playerVelocity.y = jumpPower
+          isJumping = true
+          createJumpEffect(player.position)
         }
-        
-        function createSword(level) {
-            const config = weaponConfigs[level];
-            const group = new THREE.Group();
-            
-            // 剑柄
-            const handleGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.35, 8);
-            const handleMat = new THREE.MeshStandardMaterial({ color: 0x4a3728 });
-            const handle = new THREE.Mesh(handleGeo, handleMat);
-            handle.position.y = -0.175;
-            group.add(handle);
-            
-            // 护手
-            const guardSize = 0.2 + level * 0.04;
-            const guardGeo = level >= 8 ? 
-                new THREE.OctahedronGeometry(guardSize, 0) :
-                level >= 5 ?
-                new THREE.BoxGeometry(guardSize * 2, 0.08, guardSize) :
-                new THREE.BoxGeometry(guardSize * 2, 0.06, 0.12);
-            
-            const guardMat = new THREE.MeshStandardMaterial({ 
-                color: config.color,
-                emissive: config.color,
-                emissiveIntensity: config.glow,
-                metalness: 0.9,
-                roughness: 0.1
-            });
-            const guard = new THREE.Mesh(guardGeo, guardMat);
-            group.add(guard);
-            
-            // 剑身
-            const bladeLength = 0.8 + level * 0.15;
-            const bladeWidth = 0.08 + level * 0.015;
-            
-            let bladeGeo;
-            if (level >= 10) {
-                bladeGeo = new THREE.CylinderGeometry(bladeWidth * 0.3, bladeWidth, bladeLength, 6);
-            } else if (level >= 7) {
-                bladeGeo = new THREE.BoxGeometry(bladeWidth, bladeLength, 0.04);
-            } else {
-                bladeGeo = new THREE.BoxGeometry(bladeWidth, bladeLength, 0.03);
-            }
-            
-            const bladeMat = new THREE.MeshStandardMaterial({
-                color: config.color,
-                emissive: config.color,
-                emissiveIntensity: config.glow,
-                metalness: 0.95,
-                roughness: 0.05
-            });
-            const blade = new THREE.Mesh(bladeGeo, bladeMat);
-            blade.position.y = bladeLength / 2;
-            group.add(blade);
-            
-            // 剑尖
-            const tipGeo = new THREE.ConeGeometry(bladeWidth / 2, 0.2, 4);
-            const tip = new THREE.Mesh(tipGeo, bladeMat);
-            tip.position.y = bladeLength + 0.1;
-            group.add(tip);
-            
-            // 特效粒子
-            const particleCount = 5 + level * 5;
-            const particleGeo = new THREE.BufferGeometry();
-            const positions = new Float32Array(particleCount * 3);
-            const velocities = [];
-            
-            for (let i = 0; i < particleCount; i++) {
-                positions[i * 3] = (Math.random() - 0.5) * bladeWidth;
-                positions[i * 3 + 1] = Math.random() * bladeLength;
-                positions[i * 3 + 2] = (Math.random() - 0.5) * 0.1;
-                
-                velocities.push({
-                    x: (Math.random() - 0.5) * 0.02,
-                    y: Math.random() * 0.02,
-                    z: (Math.random() - 0.5) * 0.02
-                });
-            }
-            
-            particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            const particleMat = new THREE.PointsMaterial({
-                color: config.color,
-                size: 0.06 + level * 0.01,
-                transparent: true,
-                opacity: 0.9,
-                blending: THREE.AdditiveBlending
-            });
-            const particleSystem = new THREE.Points(particleGeo, particleMat);
-            particleSystem.name = 'particles';
-            particleSystem.userData = { velocities };
-            group.add(particleSystem);
-            
-            // 光晕
-            if (config.glow > 0) {
-                const light = new THREE.PointLight(config.color, config.glow, 3 + level * 0.5);
-                light.position.y = bladeLength / 2;
-                light.name = 'swordLight';
-                group.add(light);
-            }
-            
-            // 符文环
-            if (level >= 6) {
-                const ringGeo = new THREE.TorusGeometry(0.3, 0.02, 8, 32);
-                const ringMat = new THREE.MeshBasicMaterial({
-                    color: config.color,
-                    transparent: true,
-                    opacity: 0.6
-                });
-                const ring = new THREE.Mesh(ringGeo, ringMat);
-                ring.position.y = bladeLength * 0.3;
-                ring.rotation.x = Math.PI / 2;
-                ring.name = 'runeRing';
-                group.add(ring);
-            }
-            
-            if (level >= 9) {
-                const ring2Geo = new THREE.TorusGeometry(0.4, 0.015, 8, 32);
-                const ring2Mat = new THREE.MeshBasicMaterial({
-                    color: 0xffffff,
-                    transparent: true,
-                    opacity: 0.4
-                });
-                const ring2 = new THREE.Mesh(ring2Geo, ring2Mat);
-                ring2.position.y = bladeLength * 0.6;
-                ring2.rotation.x = Math.PI / 2;
-                ring2.name = 'runeRing2';
-                group.add(ring2);
-            }
-            
-            return group;
+
+        // 重力
+        playerVelocity.y -= 0.015
+
+        // 应用速度
+        player.position.add(playerVelocity)
+
+        // 行走动画
+        if (moveX !== 0 && !isJumping) {
+          const animSpeed = 12
+          player.userData.leftLeg.rotation.x =
+            Math.sin(Date.now() * 0.01 * animSpeed) * 0.5
+          player.userData.rightLeg.rotation.x =
+            -Math.sin(Date.now() * 0.01 * animSpeed) * 0.5
+          player.userData.leftArm.rotation.x =
+            -Math.sin(Date.now() * 0.01 * animSpeed) * 0.3
+          player.userData.rightArm.rotation.x =
+            Math.sin(Date.now() * 0.01 * animSpeed) * 0.3
+        } else {
+          player.userData.leftLeg.rotation.x *= 0.8
+          player.userData.rightLeg.rotation.x *= 0.8
+          player.userData.leftArm.rotation.x *= 0.8
+          player.userData.rightArm.rotation.x *= 0.8
         }
-        
-        // ==================== 关卡生成 ====================
-        function generateLevel(level) {
-            enemies.forEach(e => {
-                scene.remove(e.mesh);
-                if (e.label) e.label.remove();
-            });
-            enemies = [];
-            
-            const levelLength = 60 + level * 30;
-            const enemyCount = 12 + level * 8;
-            const enemyNames = Object.keys(enemyTypes);
-            
-            for (let i = 0; i < enemyCount; i++) {
-                let availableEnemies = enemyNames.slice(0, Math.min(4 + level, enemyNames.length));
-                const name = availableEnemies[Math.floor(Math.random() * availableEnemies.length)];
-                
-                // 所有怪物都在 Z=0 的同一条线上，挡在玩家前进路上
-                const x = 15 + i * 4 + Math.random() * 2; // 均匀分布，间隔约4单位
-                const z = 0; // 强制在同一平行线上
-                const enemy = createEnemy(name, x, 0, z);
-                enemies.push(enemy);
+
+        // 转向
+        if (moveX > 0) player.rotation.y = 0
+        if (moveX < 0) player.rotation.y = Math.PI
+
+        // 头部始终面向玩家（朝向玩家方向）
+        if (player.userData.head) {
+          const headTargetY = moveX > 0 ? 0 : moveX < 0 ? Math.PI : player.rotation.y
+          if (moveX !== 0) {
+            player.userData.head.rotation.y += (headTargetY - player.userData.head.rotation.y) * 0.15
+          }
+        }
+
+        // 地面碰撞检测
+        let onGround = false
+        for (let platform of platforms) {
+          const px = platform.position.x
+          const py = platform.position.y
+          const pw = platform.geometry.parameters.width
+          const ph = platform.geometry.parameters.height
+
+          if (
+            player.position.x > px - pw / 2 - 0.3 &&
+            player.position.x < px + pw / 2 + 0.3 &&
+            player.position.y > py + ph / 2 - 0.5 &&
+            player.position.y < py + ph / 2 + 0.5 &&
+            playerVelocity.y <= 0
+          ) {
+            player.position.y = py + ph / 2 + 0.6 * player.scale.y
+            playerVelocity.y = 0
+            isJumping = false
+            onGround = true
+          }
+        }
+
+        // 终点检测 - 通过旗帜位置
+        const levelLength = 60 + currentLevel * 30
+        if (player.position.x >= levelLength - 2) {
+          if (currentLevel >= 5) {
+            victory()
+          } else {
+            levelComplete()
+          }
+        }
+
+        // 掉落检测 - 草原上不会掉死，只扣血并重置位置
+        if (player.position.y < -5) {
+          playerHealth -= 15
+          player.position.set(Math.max(0, player.position.x - 10), 3, 0)
+          playerVelocity.set(0, 0, 0)
+          showDamageEffect()
+          if (playerHealth <= 0) gameOver('体力耗尽...')
+        }
+
+        // 攻击冷却
+        if (isAttacking) {
+          const attackDuration = 300
+          if (Date.now() - attackStartTime > attackDuration) {
+            isAttacking = false
+          }
+        }
+
+        // 剑动画
+        if (sword) {
+          const baseRot = -Math.PI / 4
+          if (isAttacking) {
+            const progress = (Date.now() - attackStartTime) / 300
+            sword.rotation.z = baseRot + Math.sin(progress * Math.PI) * 2
+            sword.rotation.x = Math.sin(progress * Math.PI * 2) * 0.5
+          } else {
+            sword.rotation.z += (baseRot - sword.rotation.z) * 0.2
+            sword.rotation.x *= 0.8
+          }
+        }
+
+        // 武器发光
+        if (player.userData.glow) {
+          const glow = player.userData.glow
+          glow.material.color.setHex(weaponConfigs[weaponLevel].color)
+          glow.material.opacity =
+            0.1 + Math.sin(Date.now() * 0.005) * 0.05 * weaponLevel
+        }
+
+        // 连击计时
+        if (comboTimer > 0) {
+          comboTimer -= deltaTime
+          if (comboTimer <= 0) comboCount = 0
+        }
+      }
+
+      function updateCamera() {
+        if (!player) return
+
+        const targetPos = player.position.clone().add(cameraOffset)
+        camera.position.lerp(targetPos, 0.1)
+        camera.lookAt(
+          player.position.x,
+          player.position.y + 1,
+          player.position.z,
+        )
+      }
+
+      function updateEnemies(deltaTime) {
+        const now = Date.now()
+
+        enemies.forEach((enemy, index) => {
+          if (enemy.health <= 0) return
+
+          const dx = player.position.x - enemy.mesh.position.x
+          const dy = player.position.y - enemy.mesh.position.y
+          const dz = player.position.z - enemy.mesh.position.z
+          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz)
+
+          // AI移动 - 限制在草原范围内
+          if (dist > 1.5 && dist < 15) {
+            enemy.mesh.position.x += (dx / dist) * enemy.speed
+            enemy.mesh.position.z += (dz / dist) * enemy.speed
+            // 限制z轴范围
+            enemy.mesh.position.z = Math.max(-8, Math.min(8, enemy.mesh.position.z))
+            enemy.mesh.lookAt(
+              player.position.x,
+              enemy.mesh.position.y,
+              player.position.z,
+            )
+          }
+
+          // 攻击玩家
+          if (dist < 1.5 && now - enemy.lastAttack > 1500) {
+            playerHealth -= enemy.damage
+            enemy.lastAttack = now
+            showDamageEffect()
+            createHitEffect(player.position, 0xff0000)
+
+            // 击退
+            playerVelocity.x +=
+              (player.position.x - enemy.mesh.position.x) * 0.1
+            playerVelocity.y = 0.15
+
+            if (playerHealth <= 0) gameOver(`被${enemy.name}击败了...`)
+          }
+
+          // 受击闪烁
+          if (enemy.hitFlash > 0) {
+            enemy.hitFlash--
+            enemy.mesh.children.forEach((child) => {
+              if (child.material) child.material.emissive.setHex(0xff0000)
+            })
+          } else {
+            enemy.mesh.children.forEach((child) => {
+              if (child.material && child.material.emissive) {
+                child.material.emissive.setHex(0)
+              }
+            })
+          }
+
+          // 更新标签位置
+          updateEnemyLabel(enemy)
+        })
+
+        // 清理死亡敌人
+        enemies = enemies.filter((enemy) => {
+          if (enemy.health <= 0) {
+            scene.remove(enemy.mesh)
+            if (enemy.label) enemy.label.remove()
+
+            // 升级检查
+            kills++
+            score += 100 * weaponLevel
+            checkWeaponUpgrade()
+
+            // 死亡特效
+            createExplosion(enemy.mesh.position, enemyTypes[enemy.name].color)
+
+            return false
+          }
+          return true
+        })
+      }
+
+      function updateEnemyLabel(enemy) {
+        if (!enemy.label) return
+
+        const vector = enemy.mesh.position.clone()
+        vector.y += 1.5
+        vector.project(camera)
+
+        const x = (vector.x * 0.5 + 0.5) * window.innerWidth
+        const y = (-(vector.y * 0.5) + 0.5) * window.innerHeight
+
+        if (vector.z < 1) {
+          enemy.label.style.left = x + 'px'
+          enemy.label.style.top = y + 'px'
+          enemy.label.style.display = 'block'
+        } else {
+          enemy.label.style.display = 'none'
+        }
+      }
+
+      function updateParticles() {
+        particles.forEach((p) => {
+          p.rotation.y += 0.001
+        })
+      }
+
+      function checkWeaponUpgrade() {
+        // 10级武器：每5杀升1级
+        const newLevel = Math.min(Math.floor(kills / 5) + 1, 10)
+        if (newLevel > weaponLevel) {
+          weaponLevel = newLevel
+
+          // 升级特效
+          createUpgradeEffect(player.position)
+
+          // 更新剑
+          player.remove(sword)
+          sword = createSword(weaponLevel)
+          sword.position.set(0.6, 0.8, 0.5)
+          sword.rotation.z = -Math.PI / 4
+          player.add(sword)
+
+          // 恢复生命
+          playerHealth = Math.min(playerHealth + 25, maxHealth)
+
+          // 显示升级提示
+          showLevelUpText(weaponLevel)
+        }
+      }
+
+      function showLevelUpText(level) {
+        const config = weaponConfigs[level]
+        const div = document.createElement('div')
+        div.style.cssText = `
+          position: absolute;
+          left: 50%;
+          top: 35%;
+          transform: translate(-50%, -50%);
+          color: ${config.color === 0xffd700 ? '#ffd700' : '#fff'};
+          font-size: 28px;
+          font-weight: bold;
+          text-shadow: 2px 2px 4px #000;
+          pointer-events: none;
+          animation: levelUpAnim 2s ease-out forwards;
+        `
+        div.textContent = `⚔️ 武器升级! ${config.name}`
+        document.getElementById('ui').appendChild(div)
+
+        setTimeout(() => div.remove(), 2000)
+      }
+
+      function createUpgradeEffect(pos) {
+        // 武器升级特效 - 彩虹光环
+        const colors = [0xff0000, 0xff8800, 0xffff00, 0x00ff00, 0x00ffff, 0x0000ff, 0xff00ff]
+        colors.forEach((color, i) => {
+          setTimeout(() => {
+            createExplosion(pos, color, 1.5)
+          }, i * 100)
+        })
+
+        // 中心光球
+        const sphereGeo = new THREE.SphereGeometry(0.5, 16, 16)
+        const sphereMat = new THREE.MeshBasicMaterial({
+          color: weaponConfigs[weaponLevel].color,
+          transparent: true,
+          opacity: 0.8,
+        })
+        const sphere = new THREE.Mesh(sphereGeo, sphereMat)
+        sphere.position.copy(pos)
+        sphere.position.y += 1
+        scene.add(sphere)
+
+        let scale = 1
+        const anim = () => {
+          scale += 0.1
+          sphere.scale.set(scale, scale, scale)
+          sphere.material.opacity -= 0.03
+          if (sphere.material.opacity > 0) requestAnimationFrame(anim)
+          else scene.remove(sphere)
+        }
+        anim()
+      }
+
+      // ==================== 攻击系统 ====================
+      let attackStartTime = 0
+
+      function attack() {
+        if (!gameRunning || isAttacking || !player) return
+
+        isAttacking = true
+        attackStartTime = Date.now()
+
+        const config = weaponConfigs[weaponLevel]
+        const attackRange = config.range
+        const damage = config.damage
+
+        // 攻击特效
+        createSlashEffect(player.position, player.rotation.y)
+
+        // 检测命中
+        let hitCount = 0
+        enemies.forEach((enemy) => {
+          if (enemy.health <= 0) return
+
+          const dx = enemy.mesh.position.x - player.position.x
+          const dz = enemy.mesh.position.z - player.position.z
+          const dist = Math.sqrt(dx * dx + dz * dz)
+
+          if (dist < attackRange) {
+            // 检查方向
+            const angle = Math.atan2(dz, dx)
+            const playerAngle = player.rotation.y === 0 ? 0 : Math.PI
+            const angleDiff = Math.abs(angle - playerAngle)
+
+            if (angleDiff < Math.PI / 2 || angleDiff > Math.PI * 1.5) {
+              enemy.health -= damage
+              enemy.hitFlash = 5
+              hitCount++
+
+              // 击退
+              enemy.mesh.position.x += (dx / dist) * 0.8
+              enemy.mesh.position.z += (dz / dist) * 0.8
+
+              // 特效
+              createHitEffect(enemy.mesh.position, config.color)
+
+              // 连击
+              comboCount++
+              comboTimer = 2000
+
+              if (comboCount > 1) {
+                score += comboCount * 10
+                showComboText(comboCount)
+              }
             }
-            
-            // 终点
-            const endLight = new THREE.PointLight(0xffd700, 1.5, 15);
-            endLight.position.set(levelLength, 3, 0);
-            endLight.name = 'endLight';
-            scene.add(endLight);
-            
-            const endMarker = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.5, 0.5, 6, 8),
-                new THREE.MeshBasicMaterial({
-                    color: 0xffd700,
-                    transparent: true,
-                    opacity: 0.3
-                })
-            );
-            endMarker.position.set(levelLength, 3, 0);
-            endMarker.name = 'endMarker';
-            scene.add(endMarker);
-            
-            const endBase = new THREE.Mesh(
-                new THREE.CylinderGeometry(2, 2.5, 0.5, 8),
-                new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffa500, emissiveIntensity: 0.3 })
-            );
-            endBase.position.set(levelLength, 0.25, 0);
-            endBase.userData = { isEnd: true };
-            scene.add(endBase);
+          }
+        })
+
+        if (hitCount > 0) {
+          score += damage * hitCount
         }
-        
-        function createEnemy(name, x, y, z) {
-            const config = enemyTypes[name];
-            const group = new THREE.Group();
-            
-            // 身体
-            const bodyGeo = new THREE.CylinderGeometry(0.32 * config.scale, 0.28 * config.scale, 0.8 * config.scale, 8);
-            const bodyMat = new THREE.MeshStandardMaterial({ color: config.color });
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.position.y = 0.4 * config.scale;
-            body.castShadow = true;
-            body.name = 'body';
-            group.add(body);
-            
-            // 头部
-            const headGeo = new THREE.SphereGeometry(0.22 * config.scale, 12, 12);
-            const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
-            const head = new THREE.Mesh(headGeo, headMat);
-            head.position.y = 0.9 * config.scale;
-            head.name = 'head';
-            group.add(head);
-            
-            // 愤怒的眼睛
-            const eyeGeo = new THREE.SphereGeometry(0.035 * config.scale, 8, 8);
-            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-            const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-            leftEye.position.set(-0.08 * config.scale, 0.95 * config.scale, 0.15 * config.scale);
-            const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-            rightEye.position.set(0.08 * config.scale, 0.95 * config.scale, 0.15 * config.scale);
-            group.add(leftEye, rightEye);
-            
-            // 武器
-            if (name === '万总') {
-                const weaponGeo = new THREE.BoxGeometry(0.12, 0.7, 0.12);
-                const weaponMat = new THREE.MeshStandardMaterial({ color: 0x8b0000 });
-                const weapon = new THREE.Mesh(weaponGeo, weaponMat);
-                weapon.position.set(0.35 * config.scale, 0.5 * config.scale, 0.15 * config.scale);
-                group.add(weapon);
-            } else if (name === '精英怪') {
-                const weaponGeo = new THREE.ConeGeometry(0.08, 0.6, 6);
-                const weaponMat = new THREE.MeshStandardMaterial({ color: 0xffd700 });
-                const weapon = new THREE.Mesh(weaponGeo, weaponMat);
-                weapon.position.set(0.3 * config.scale, 0.5 * config.scale, 0.1 * config.scale);
-                group.add(weapon);
-            }
-            
-            // 血条
-            const hpBgGeo = new THREE.PlaneGeometry(0.6, 0.08);
-            const hpBgMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-            const hpBg = new THREE.Mesh(hpBgGeo, hpBgMat);
-            hpBg.position.y = 1.3 * config.scale;
-            hpBg.rotation.x = -Math.PI / 6;
-            group.add(hpBg);
-            
-            const hpGeo = new THREE.PlaneGeometry(0.58, 0.06);
-            const hpMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-            const hpBar = new THREE.Mesh(hpGeo, hpMat);
-            hpBar.position.set(0, 1.3 * config.scale, 0.01);
-            hpBar.rotation.x = -Math.PI / 6;
-            hpBar.name = 'hpBar';
-            group.add(hpBar);
-            
-            // 受击特效容器
-            const hitEffect = new THREE.Group();
-            hitEffect.name = 'hitEffect';
-            hitEffect.visible = false;
-            group.add(hitEffect);
-            
-            group.position.set(x, y, z);
-            scene.add(group);
-            
-            // 标签
-            const label = document.createElement('div');
-            label.className = 'enemyLabel';
-            label.textContent = name;
-            document.getElementById('ui').appendChild(label);
-            
-            return {
-                mesh: group,
-                name: name,
-                health: config.health,
-                maxHealth: config.health,
-                damage: config.damage,
-                speed: config.speed,
-                exp: config.exp,
-                label: label,
-                lastAttack: 0,
-                hitFlash: 0,
-                hpBar: hpBar,
-                isHit: false,
-                hitTime: 0
-            };
+
+        updateUI()
+      }
+
+      // ==================== 特效系统 ====================
+      function createJumpEffect(pos) {
+        for (let i = 0; i < 8; i++) {
+          const particle = new THREE.Mesh(
+            new THREE.SphereGeometry(0.08, 6, 6),
+            new THREE.MeshBasicMaterial({ color: 0x88ccff, transparent: true }),
+          )
+          particle.position.copy(pos)
+          particle.position.y = 0.2
+          particle.velocity = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.2,
+            Math.random() * 0.2,
+            (Math.random() - 0.5) * 0.2,
+          )
+          scene.add(particle)
+
+          setTimeout(() => scene.remove(particle), 500)
         }
-        
-        function createAmbientParticles() {
-            const particleGeo = new THREE.BufferGeometry();
-            const particleCount = 150;
-            const positions = new Float32Array(particleCount * 3);
-            
-            for (let i = 0; i < particleCount * 3; i += 3) {
-                positions[i] = (Math.random() - 0.5) * 150;
-                positions[i+1] = Math.random() * 15;
-                positions[i+2] = (Math.random() - 0.5) * 30;
-            }
-            
-            particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            
-            const particleMat = new THREE.PointsMaterial({
-                color: 0xffffaa,
-                size: 0.15,
-                transparent: true,
-                opacity: 0.8,
-                blending: THREE.AdditiveBlending
-            });
-            
-            const particleSystem = new THREE.Points(particleGeo, particleMat);
-            particleSystem.name = 'ambientParticles';
-            scene.add(particleSystem);
-            particles.push(particleSystem);
+      }
+
+      function createHitEffect(pos, color) {
+        for (let i = 0; i < 6; i++) {
+          const particle = new THREE.Mesh(
+            new THREE.SphereGeometry(0.1, 6, 6),
+            new THREE.MeshBasicMaterial({ color: color }),
+          )
+          particle.position.copy(pos)
+          particle.position.x += (Math.random() - 0.5) * 0.5
+          particle.position.y += (Math.random() - 0.5) * 0.5
+          particle.position.z += (Math.random() - 0.5) * 0.5
+          scene.add(particle)
+
+          const anim = () => {
+            particle.position.y += 0.05
+            particle.scale.multiplyScalar(0.9)
+            if (particle.scale.x > 0.01) requestAnimationFrame(anim)
+            else scene.remove(particle)
+          }
+          anim()
         }
-        
-        // ==================== 游戏逻辑 ====================
-        function startGame() {
-            document.getElementById('startScreen').style.display = 'none';
-            document.getElementById('playerFace').style.display = 'block';
-            gameRunning = true;
-            currentLevel = 1;
-            score = 0;
-            kills = 0;
-            weaponLevel = 1;
-            playerHealth = 100;
-            exp = 0;
-            expToNext = 3;
-            
-            createPlayer();
-            
-            // 确保玩家在 Z=0
-            if (player) {
-                player.position.z = 0;
-                // 强制设置相机到正确位置
-                camera.position.set(player.position.x, player.position.y + 3.5, player.position.z + 8);
-                camera.lookAt(player.position.x, player.position.y + 1.0, player.position.z);
-            }
-            
-            generateLevel(currentLevel);
-            updateUI();
+      }
+
+      function createExplosion(pos, color, scale = 1) {
+        const count = 15 * scale
+        for (let i = 0; i < count; i++) {
+          const particle = new THREE.Mesh(
+            new THREE.SphereGeometry(0.1 * scale, 6, 6),
+            new THREE.MeshBasicMaterial({ color: color }),
+          )
+          particle.position.copy(pos)
+          const velocity = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.5 * scale,
+            (Math.random() - 0.5) * 0.5 * scale,
+            (Math.random() - 0.5) * 0.5 * scale,
+          )
+          scene.add(particle)
+
+          let life = 30
+          const anim = () => {
+            particle.position.add(velocity)
+            velocity.y -= 0.01
+            particle.scale.multiplyScalar(0.95)
+            life--
+            if (life > 0) requestAnimationFrame(anim)
+            else scene.remove(particle)
+          }
+          anim()
         }
-        
-        function restartGame() {
-            document.getElementById('gameOverScreen').style.display = 'none';
-            document.getElementById('victoryScreen').style.display = 'none';
-            document.getElementById('playerFace').style.display = 'none';
-            
-            // 清理场景
-            enemies.forEach(e => {
-                if (e.label) e.label.remove();
-            });
-            
-            const endLight = scene.getObjectByName('endLight');
-            const endMarker = scene.getObjectByName('endMarker');
-            if (endLight) scene.remove(endLight);
-            if (endMarker) scene.remove(endMarker);
-            
-            if (player) {
-                scene.remove(player);
-                player = null;
-            }
-            
-            // 重置相机
-            camera.position.set(0, 4, 8);
-            camera.lookAt(0, 0.5, 0);
-            
-            startGame();
+      }
+
+      function createSlashEffect(pos, rotation) {
+        const config = weaponConfigs[weaponLevel]
+        const slashGeo = new THREE.RingGeometry(1, 1.5, 0, Math.PI)
+        const slashMat = new THREE.MeshBasicMaterial({
+          color: config.color,
+          transparent: true,
+          opacity: 0.8,
+          side: THREE.DoubleSide,
+        })
+        const slash = new THREE.Mesh(slashGeo, slashMat)
+        slash.position.copy(pos)
+        slash.position.y += 1
+        slash.rotation.x = -Math.PI / 2
+        slash.rotation.z = rotation === 0 ? -Math.PI / 2 : Math.PI / 2
+        scene.add(slash)
+
+        // 特效类型
+        if (config.effect === 'fire') {
+          createFireEffect(pos)
+        } else if (config.effect === 'lightning') {
+          createLightningEffect(pos)
+        } else if (config.effect === 'ice') {
+          createIceEffect(pos)
+        } else if (config.effect === 'poison') {
+          createPoisonEffect(pos)
+        } else if (config.effect === 'crystal') {
+          createCrystalEffect(pos)
+        } else if (config.effect === 'star') {
+          createStarEffect(pos)
+        } else if (config.effect === 'dark') {
+          createDarkEffect(pos)
+        } else if (config.effect === 'holy') {
+          createHolyEffect(pos)
         }
-        
-        function nextLevel() {
-            document.getElementById('levelCompleteScreen').style.display = 'none';
-            document.getElementById('playerFace').style.display = 'block';
-            currentLevel++;
-            
-            playerHealth = Math.min(playerHealth + 50, maxHealth);
-            exp += 2;
-            checkLevelUp();
-            
-            player.position.set(0, 0.5, 0);
-            playerVelocity.set(0, 0, 0);
-            
-            const endLight = scene.getObjectByName('endLight');
-            const endMarker = scene.getObjectByName('endMarker');
-            if (endLight) scene.remove(endLight);
-            if (endMarker) scene.remove(endMarker);
-            
-            generateLevel(currentLevel);
-            updateUI();
-            gameRunning = true;
+
+        let scale = 1
+        const anim = () => {
+          scale += 0.3
+          slash.scale.set(scale, scale, scale)
+          slash.material.opacity -= 0.05
+          if (slash.material.opacity > 0) requestAnimationFrame(anim)
+          else scene.remove(slash)
         }
-        
-        function gameOver(reason) {
-            gameRunning = false;
-            document.getElementById('playerFace').style.display = 'none';
-            document.getElementById('gameOverText').innerHTML = 
-                `${reason}<br><br>最终分数: ${score}<br>击杀数: ${kills}<br>最高武器: ${weaponConfigs[weaponLevel].name}`;
-            document.getElementById('gameOverScreen').style.display = 'flex';
+        anim()
+      }
+
+      function createFireEffect(pos) {
+        for (let i = 0; i < 10; i++) {
+          const particle = new THREE.Mesh(
+            new THREE.SphereGeometry(0.15, 6, 6),
+            new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0xff4400 : 0xffaa00 }),
+          )
+          particle.position.copy(pos)
+          particle.position.y += 1 + Math.random() * 0.5
+          scene.add(particle)
+
+          const anim = () => {
+            particle.position.y += 0.1
+            particle.position.x += (Math.random() - 0.5) * 0.3
+            particle.scale.multiplyScalar(0.92)
+            if (particle.scale.x > 0.01) requestAnimationFrame(anim)
+            else scene.remove(particle)
+          }
+          anim()
         }
-        
-        function levelComplete() {
-            gameRunning = false;
-            document.getElementById('playerFace').style.display = 'none';
-            const levelNames = ['', '草原启程', '森林深处', '终极决战'];
-            document.getElementById('levelCompleteText').innerHTML = 
-                `🎉 恭喜通过第${currentLevel}关：${levelNames[currentLevel]}！<br><br>` +
-                `分数: ${score}<br>击杀: ${kills}<br>当前武器: ${weaponConfigs[weaponLevel].name}`;
-            document.getElementById('levelCompleteScreen').style.display = 'flex';
+      }
+
+      function createLightningEffect(pos) {
+        for (let i = 0; i < 8; i++) {
+          const lineGeo = new THREE.BoxGeometry(0.05, 1.5 + Math.random(), 0.05)
+          const lineMat = new THREE.MeshBasicMaterial({ color: 0x00ffff })
+          const line = new THREE.Mesh(lineGeo, lineMat)
+          line.position.copy(pos)
+          line.position.y += 1.5
+          line.position.x += (Math.random() - 0.5) * 2
+          line.position.z += (Math.random() - 0.5) * 2
+          line.rotation.z = (Math.random() - 0.5) * 0.5
+          scene.add(line)
+
+          setTimeout(() => scene.remove(line), 200)
         }
-        
-        function victory() {
-            gameRunning = false;
-            document.getElementById('playerFace').style.display = 'none';
-            document.getElementById('victoryText').innerHTML = 
-                `🏆 恭喜翠翠完成大冒险！<br><br>` +
-                `最终分数: ${score}<br>` +
-                `总击杀数: ${kills}<br>` +
-                `最终武器: ${weaponConfigs[weaponLevel].name}<br><br>` +
-                `🌟 你就是传说中的翠翠勇士！`;
-            document.getElementById('victoryScreen').style.display = 'flex';
+      }
+
+      function createIceEffect(pos) {
+        for (let i = 0; i < 12; i++) {
+          const crystal = new THREE.Mesh(
+            new THREE.OctahedronGeometry(0.15),
+            new THREE.MeshBasicMaterial({ color: 0x88ffff, transparent: true, opacity: 0.8 }),
+          )
+          crystal.position.copy(pos)
+          crystal.position.y += 1
+          crystal.position.x += (Math.random() - 0.5) * 2
+          crystal.position.z += (Math.random() - 0.5) * 2
+          scene.add(crystal)
+
+          const anim = () => {
+            crystal.rotation.y += 0.1
+            crystal.scale.multiplyScalar(0.95)
+            if (crystal.scale.x > 0.01) requestAnimationFrame(anim)
+            else scene.remove(crystal)
+          }
+          anim()
         }
-        
-        // ==================== 更新逻辑 ====================
-        function updatePlayer(deltaTime) {
-            if (!player) return;
-            
-            const speed = isCrouching ? 0.1 : 0.18;
-            const jumpPower = 0.32;
-            
-            let moveX = 0;
-            if (keys['ArrowLeft'] || keys['KeyA']) moveX = -1;
-            if (keys['ArrowRight'] || keys['KeyD']) moveX = 1;
-            
-            isCrouching = keys['KeyC'] || keys['ArrowDown'];
-            
-            playerVelocity.x = moveX * speed;
-            
-            if ((keys['Space'] || keys['ArrowUp']) && !isJumping) {
-                playerVelocity.y = jumpPower;
-                isJumping = true;
-                createJumpEffect(player.position);
-            }
-            
-            playerVelocity.y -= 0.012;
-            player.position.add(playerVelocity);
-            
-            // 地面限制
-            if (player.position.y < 0.5) {
-                player.position.y = 0.5;
-                playerVelocity.y = 0;
-                isJumping = false;
-            }
-            
-            // Z轴限制 - 强制保持在 Z=0 的平行线上，和怪物同一条线
-            player.position.z = 0;
-            
-            // 下蹲动画
-            const targetScaleY = isCrouching ? 0.65 : 1;
-            player.scale.y += (targetScaleY - player.scale.y) * 0.2;
-            
-            // 行走动画
-            if (moveX !== 0 && !isJumping) {
-                const animSpeed = isCrouching ? 6 : 10;
-                const time = Date.now() * 0.001;
-                player.userData.leftLeg.rotation.x = Math.sin(time * animSpeed) * 0.4;
-                player.userData.rightLeg.rotation.x = -Math.sin(time * animSpeed) * 0.4;
-                player.userData.leftArm.rotation.x = -Math.sin(time * animSpeed) * 0.25;
-                
-                if (!isAttacking) {
-                    player.userData.rightArm.rotation.x = Math.sin(time * animSpeed) * 0.25;
-                    player.userData.rightArm.rotation.z = -0.3 + Math.sin(time * animSpeed * 2) * 0.05;
-                }
-            } else {
-                player.userData.leftLeg.rotation.x *= 0.8;
-                player.userData.rightLeg.rotation.x *= 0.8;
-                player.userData.leftArm.rotation.x *= 0.8;
-                if (!isAttacking) {
-                    player.userData.rightArm.rotation.x *= 0.8;
-                    player.userData.rightArm.rotation.z += (-0.3 - player.userData.rightArm.rotation.z) * 0.1;
-                }
-            }
-            
-            // 转向（身体转向，头像保持正面）
-            if (moveX > 0) {
-                player.rotation.y = 0;
-            }
-            if (moveX < 0) {
-                player.rotation.y = Math.PI;
-            }
-            
-            // 确保头像可见
-            const faceDiv = document.getElementById('playerFace');
-            if (faceDiv && gameRunning) {
-                faceDiv.style.display = 'block';
-            }
-            
-            // 攻击
-            if (isAttacking) {
-                const attackDuration = 250;
-                if (Date.now() - attackStartTime > attackDuration) {
-                    isAttacking = false;
-                }
-            }
-            
-            updateSwordAnimation();
-            
-            if (invincibleTime > 0) invincibleTime -= deltaTime;
-            
-            // 更新2D头像位置
-            updatePlayerFacePosition();
-            
-            if (comboTimer > 0) {
-                comboTimer -= deltaTime;
-                if (comboTimer <= 0) comboCount = 0;
-            }
+      }
+
+      function createPoisonEffect(pos) {
+        for (let i = 0; i < 15; i++) {
+          const bubble = new THREE.Mesh(
+            new THREE.SphereGeometry(0.1, 8, 8),
+            new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.7 }),
+          )
+          bubble.position.copy(pos)
+          bubble.position.y += 0.5 + Math.random() * 1
+          scene.add(bubble)
+
+          const anim = () => {
+            bubble.position.y += 0.05
+            bubble.position.x += Math.sin(Date.now() * 0.01) * 0.02
+            bubble.scale.multiplyScalar(0.97)
+            if (bubble.scale.x > 0.01) requestAnimationFrame(anim)
+            else scene.remove(bubble)
+          }
+          anim()
         }
-        
-        function updatePlayerFacePosition() {
-            // 更新2D头像位置，跟随3D玩家头部
-            if (!player || !gameRunning) return;
-            
-            const faceDiv = document.getElementById('playerFace');
-            if (!faceDiv) return;
-            
-            // 获取头部在世界坐标中的位置
-            const headPos = new THREE.Vector3();
-            headPos.setFromMatrixPosition(player.userData.head.matrixWorld);
-            headPos.y += 0.4; // 稍微向上偏移
-            
-            // 转换为屏幕坐标
-            headPos.project(camera);
-            
-            const x = (headPos.x * 0.5 + 0.5) * window.innerWidth;
-            const y = (-(headPos.y * 0.5) + 0.5) * window.innerHeight;
-            
-            // 检查是否在相机前方
-            if (headPos.z < 1) {
-                faceDiv.style.display = 'block';
-                faceDiv.style.left = x + 'px';
-                faceDiv.style.top = y + 'px';
-            } else {
-                faceDiv.style.display = 'none';
-            }
+      }
+
+      function createCrystalEffect(pos) {
+        for (let i = 0; i < 10; i++) {
+          const crystal = new THREE.Mesh(
+            new THREE.OctahedronGeometry(0.2),
+            new THREE.MeshBasicMaterial({ color: [0xff00ff, 0x00ffff, 0xffff00][i % 3], transparent: true, opacity: 0.9 }),
+          )
+          crystal.position.copy(pos)
+          crystal.position.y += 1 + Math.random() * 0.5
+          scene.add(crystal)
+
+          const anim = () => {
+            crystal.rotation.x += 0.1
+            crystal.rotation.z += 0.15
+            crystal.scale.multiplyScalar(0.96)
+            if (crystal.scale.x > 0.01) requestAnimationFrame(anim)
+            else scene.remove(crystal)
+          }
+          anim()
         }
-        
-        function updateSwordAnimation() {
-            if (!sword) return;
-            
-            const config = weaponConfigs[weaponLevel];
-            const baseRot = -Math.PI / 4;
-            
-            if (isAttacking) {
-                const progress = (Date.now() - attackStartTime) / 250;
-                const swing = Math.sin(progress * Math.PI);
-                sword.rotation.z = baseRot + swing * 2.5;
-                sword.rotation.x = swing * 0.8;
-            } else {
-                sword.rotation.z += (baseRot - sword.rotation.z) * 0.2;
-                sword.rotation.x *= 0.8;
-            }
-            
-            // 粒子动画
-            const particleSystem = sword.getObjectByName('particles');
-            if (particleSystem) {
-                const positions = particleSystem.geometry.attributes.position.array;
-                const velocities = particleSystem.userData.velocities;
-                
-                for (let i = 0; i < velocities.length; i++) {
-                    positions[i * 3] += velocities[i].x;
-                    positions[i * 3 + 1] += velocities[i].y;
-                    positions[i * 3 + 2] += velocities[i].z;
-                    
-                    if (positions[i * 3 + 1] > 2 || Math.abs(positions[i * 3]) > 0.5) {
-                        positions[i * 3] = (Math.random() - 0.5) * 0.2;
-                        positions[i * 3 + 1] = Math.random() * 0.5;
-                        positions[i * 3 + 2] = (Math.random() - 0.5) * 0.1;
-                    }
-                }
-                particleSystem.geometry.attributes.position.needsUpdate = true;
-            }
-            
-            // 符文环旋转
-            const runeRing = sword.getObjectByName('runeRing');
-            if (runeRing) {
-                runeRing.rotation.z += 0.05;
-                runeRing.rotation.y += 0.03;
-            }
-            
-            const runeRing2 = sword.getObjectByName('runeRing2');
-            if (runeRing2) {
-                runeRing2.rotation.z -= 0.04;
-                runeRing2.rotation.x += 0.02;
-            }
-            
-            if (config.ultimate) {
-                sword.rotation.y += 0.01;
-            }
+      }
+
+      function createStarEffect(pos) {
+        for (let i = 0; i < 20; i++) {
+          const star = new THREE.Mesh(
+            new THREE.OctahedronGeometry(0.1),
+            new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 1 }),
+          )
+          star.position.copy(pos)
+          star.position.y += 1.5
+          scene.add(star)
+
+          const startAngle = (i / 20) * Math.PI * 2
+          const anim = () => {
+            star.position.x += Math.cos(startAngle + Date.now() * 0.01) * 0.15
+            star.position.z += Math.sin(startAngle + Date.now() * 0.01) * 0.15
+            star.rotation.y += 0.2
+            star.scale.multiplyScalar(0.96)
+            if (star.scale.x > 0.01) requestAnimationFrame(anim)
+            else scene.remove(star)
+          }
+          anim()
         }
-        
-        // ==================== 相机始终跟随玩家 - 屏幕中央 ====================
-        function updateCamera() {
-            if (!player) return;
-            
-            // 计算相机位置 - 使用固定的相对偏移
-            const offsetX = 0;                  // X轴偏移为0，保持水平居中
-            const offsetY = 3.5;                // 垂直高度
-            const offsetZ = 8;                  // 前后距离
-            
-            const targetX = player.position.x + offsetX;
-            const targetY = player.position.y + offsetY;
-            const targetZ = player.position.z + offsetZ;
-            
-            // 平滑跟随
-            camera.position.x += (targetX - camera.position.x) * 0.12;
-            camera.position.y += (targetY - camera.position.y) * 0.12;
-            camera.position.z += (targetZ - camera.position.z) * 0.12;
-            
-            // 始终看向玩家，头像会面向相机（Billboard）
-            camera.lookAt(
-                player.position.x,
-                player.position.y + 1.0,
-                player.position.z
-            );
+      }
+
+      function createDarkEffect(pos) {
+        for (let i = 0; i < 8; i++) {
+          const shadow = new THREE.Mesh(
+            new THREE.SphereGeometry(0.3, 8, 8),
+            new THREE.MeshBasicMaterial({ color: 0x330033, transparent: true, opacity: 0.8 }),
+          )
+          shadow.position.copy(pos)
+          shadow.position.y += 1
+          shadow.position.x += (Math.random() - 0.5) * 3
+          shadow.position.z += (Math.random() - 0.5) * 3
+          scene.add(shadow)
+
+          const anim = () => {
+            shadow.scale.x *= 1.05
+            shadow.scale.y *= 1.02
+            shadow.material.opacity -= 0.03
+            if (shadow.material.opacity > 0) requestAnimationFrame(anim)
+            else scene.remove(shadow)
+          }
+          anim()
         }
-        
-        function updateEnemies(deltaTime) {
-            const now = Date.now();
-            
-            enemies.forEach((enemy, index) => {
-                if (enemy.health <= 0) return;
-                
-                const dx = player.position.x - enemy.mesh.position.x;
-                const dy = player.position.y - enemy.mesh.position.y;
-                const dz = player.position.z - enemy.mesh.position.z;
-                const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-                
-                // AI移动 - 只在X轴上移动，保持在Z=0的平行线上
-                if (dist > 1.2 && dist < 15) {
-                    // 只向玩家靠近，保持在Z=0
-                    enemy.mesh.position.x += (dx / dist) * enemy.speed;
-                    // 保持在 Z=0
-                    enemy.mesh.position.z = 0;
-                    // 面向玩家（只看X轴方向）
-                    const lookX = player.position.x;
-                    enemy.mesh.lookAt(lookX, enemy.mesh.position.y, 0);
-                } else {
-                    // 保持在Z=0线
-                    enemy.mesh.position.z = 0;
-                }
-                
-                // 攻击玩家
-                if (dist < 1.3 && now - enemy.lastAttack > 1200 && invincibleTime <= 0) {
-                    playerHealth -= enemy.damage;
-                    enemy.lastAttack = now;
-                    invincibleTime = 1000;
-                    showDamageEffect();
-                    createHitEffect(player.position, 0xff0000, 1);
-                    
-                    playerVelocity.x += (player.position.x - enemy.mesh.position.x) * 0.15;
-                    playerVelocity.y = 0.1;
-                    
-                    if (playerHealth <= 0) gameOver(`被${enemy.name}击败了...`);
-                }
-                
-                // 受击动画
-                if (enemy.hitFlash > 0) {
-                    enemy.hitFlash--;
-                    enemy.mesh.children.forEach(child => {
-                        if (child.material && child.material.emissive) {
-                            child.material.emissive.setHex(0xff0000);
-                            child.material.emissiveIntensity = 0.8;
-                        }
-                    });
-                    
-                    // 受击抖动
-                    enemy.mesh.position.x += (Math.random() - 0.5) * 0.05;
-                    enemy.mesh.position.y += (Math.random() - 0.5) * 0.05;
-                } else {
-                    enemy.mesh.children.forEach(child => {
-                        if (child.material && child.material.emissive) {
-                            child.material.emissive.setHex(0);
-                        }
-                    });
-                }
-                
-                // 受击缩放效果
-                if (enemy.isHit) {
-                    const hitProgress = (now - enemy.hitTime) / 200;
-                    if (hitProgress < 1) {
-                        const scale = 1 - Math.sin(hitProgress * Math.PI) * 0.2;
-                        enemy.mesh.scale.setScalar(scale);
-                    } else {
-                        enemy.mesh.scale.setScalar(1);
-                        enemy.isHit = false;
-                    }
-                }
-                
-                // 更新血条
-                if (enemy.hpBar) {
-                    const hpPercent = enemy.health / enemy.maxHealth;
-                    enemy.hpBar.scale.x = hpPercent;
-                    enemy.hpBar.position.x = -0.29 * (1 - hpPercent);
-                }
-                
-                updateEnemyLabel(enemy);
-            });
-            
-            // 清理死亡敌人
-            enemies = enemies.filter(enemy => {
-                if (enemy.health <= 0) {
-                    scene.remove(enemy.mesh);
-                    if (enemy.label) enemy.label.remove();
-                    
-                    exp += enemy.exp;
-                    kills++;
-                    score += 50 * weaponLevel + enemy.exp * 20;
-                    
-                    checkLevelUp();
-                    
-                    createExplosion(enemy.mesh.position, enemyTypes[enemy.name].color);
-                    
-                    return false;
-                }
-                return true;
-            });
-            
-            // 检查终点
-            const endBase = scene.children.find(c => c.userData && c.userData.isEnd);
-            if (endBase) {
-                const distToEnd = Math.abs(player.position.x - endBase.position.x);
-                if (distToEnd < 3 && Math.abs(player.position.z) < 3) {
-                    if (currentLevel >= 3) {
-                        victory();
-                    } else {
-                        levelComplete();
-                    }
-                }
-            }
+      }
+
+      function createHolyEffect(pos) {
+        // 神圣光环
+        const haloGeo = new THREE.RingGeometry(1, 2, 32)
+        const haloMat = new THREE.MeshBasicMaterial({
+          color: 0xffd700,
+          transparent: true,
+          opacity: 0.6,
+          side: THREE.DoubleSide,
+        })
+        const halo = new THREE.Mesh(haloGeo, haloMat)
+        halo.position.copy(pos)
+        halo.position.y += 2
+        scene.add(halo)
+
+        // 光芒
+        for (let i = 0; i < 12; i++) {
+          const ray = new THREE.Mesh(
+            new THREE.BoxGeometry(0.05, 1, 0.05),
+            new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.8 }),
+          )
+          ray.position.copy(pos)
+          ray.position.y += 2
+          const angle = (i / 12) * Math.PI * 2
+          ray.position.x += Math.cos(angle) * 1.5
+          ray.position.z += Math.sin(angle) * 1.5
+          scene.add(ray)
         }
-        
-        function checkLevelUp() {
-            if (exp >= expToNext && weaponLevel < 10) {
-                weaponLevel++;
-                exp = 0;
-                expToNext = Math.min(3 + weaponLevel, 8);
-                
-                createLevelUpEffect();
-                showWeaponUpgradePopup();
-                
-                playerHealth = Math.min(playerHealth + 30, maxHealth);
-                
-                if (player) {
-                    const oldSword = player.getObjectByName('sword');
-                    if (oldSword) {
-                        player.remove(oldSword);
-                    }
-                    
-                    sword = createSword(weaponLevel);
-                    sword.position.set(0.5, 0.6, 0.4);
-                    sword.rotation.z = -Math.PI / 4;
-                    sword.name = 'sword';
-                    player.add(sword);
-                    
-                    const glow = player.getObjectByName('playerGlow');
-                    if (glow) {
-                        glow.material.color.setHex(weaponConfigs[weaponLevel].color);
-                    }
-                }
-            }
+
+        let scale = 1
+        const anim = () => {
+          scale += 0.05
+          halo.scale.set(scale, scale, scale)
+          halo.rotation.y += 0.1
+          halo.material.opacity -= 0.02
+          if (halo.material.opacity > 0) requestAnimationFrame(anim)
+          else scene.remove(halo)
         }
-        
-        function updateEnemyLabel(enemy) {
-            if (!enemy.label) return;
-            
-            const vector = enemy.mesh.position.clone();
-            vector.y += 1.4;
-            vector.project(camera);
-            
-            const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
-            const y = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
-            
-            if (vector.z < 1) {
-                enemy.label.style.left = x + 'px';
-                enemy.label.style.top = y + 'px';
-                enemy.label.style.display = 'block';
-            } else {
-                enemy.label.style.display = 'none';
-            }
+        anim()
+      }
+
+      function showDamageEffect() {
+        const overlay = document.getElementById('damageOverlay')
+        overlay.style.opacity = '1'
+        setTimeout(() => (overlay.style.opacity = '0'), 200)
+      }
+
+      function showComboText(combo) {
+        const div = document.createElement('div')
+        div.style.cssText = `
+          position: absolute;
+          left: 50%;
+          top: 40%;
+          transform: translate(-50%, -50%);
+          color: #ff0;
+          font-size: 32px;
+          font-weight: bold;
+          text-shadow: 2px 2px 4px #f00;
+          pointer-events: none;
+          animation: comboAnim 1s ease-out forwards;
+        `
+        div.textContent = `${combo} 连击！`
+        document.getElementById('ui').appendChild(div)
+
+        setTimeout(() => div.remove(), 1000)
+      }
+
+      // ==================== UI更新 ====================
+      function updateUI() {
+        document.getElementById('healthFill').style.width =
+          (playerHealth / maxHealth) * 100 + '%'
+        document.getElementById('score').textContent = score
+        document.getElementById('kills').textContent = kills
+
+        const levelNames = ['', '草原清晨', '烈日当空', '夕阳西下', '月色朦胧', '黎明破晓']
+        document.getElementById('levelInfo').textContent =
+          `第 ${currentLevel} 关 - ${levelNames[currentLevel]}`
+        const config = weaponConfigs[weaponLevel]
+        document.getElementById('weaponInfo').innerHTML =
+          `${config.name} Lv.${weaponLevel}<br>伤害: ${config.damage}${config.effect ? ' | ' + config.effect : ''}`
+      }
+
+      // ==================== 事件处理 ====================
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight
+        camera.updateProjectionMatrix()
+        renderer.setSize(window.innerWidth, window.innerHeight)
+      }
+
+      function onMouseDown(e) {
+        if (e.button === 0) attack()
+      }
+
+      function onTouchStart(e) {
+        if (e.target.tagName === 'CANVAS') {
+          // 点击屏幕也可以攻击
+          // attack();
         }
-        
-        function updateEnvironment() {
-            const time = Date.now() * 0.001;
-            grassBlades.forEach(grass => {
-                grass.mesh.rotation.z = grass.baseRotation + Math.sin(time * grass.swaySpeed) * grass.swayAmount;
-            });
-            
-            clouds.forEach(cloud => {
-                cloud.mesh.position.x += cloud.speed;
-                if (cloud.mesh.position.x > 150) {
-                    cloud.mesh.position.x = -150;
-                }
-            });
-            
-            particles.forEach(p => {
-                p.rotation.y += 0.0005;
-                const positions = p.geometry.attributes.position.array;
-                for (let i = 1; i < positions.length; i += 3) {
-                    positions[i] += Math.sin(time + positions[i-1]) * 0.01;
-                    if (positions[i] > 15) positions[i] = 0;
-                }
-                p.geometry.attributes.position.needsUpdate = true;
-            });
+      }
+
+      // ==================== 主循环 ====================
+      function animate() {
+        animationId = requestAnimationFrame(animate)
+
+        if (gameRunning) {
+          updatePlayer(16)
+          updateEnemies(16)
+          updateParticles()
+          updateCamera()
+          updateUI()
         }
-        
-        // ==================== 攻击系统 - 带剑气特效 ====================
-        let attackStartTime = 0;
-        
-        function attack() {
-            if (!gameRunning || isAttacking || !player) return;
-            
-            isAttacking = true;
-            attackStartTime = Date.now();
-            
-            const config = weaponConfigs[weaponLevel];
-            
-            // 创建剑气特效
-            createSlashEffect(config);
-            
-            // 检测命中 - 所有怪物都在同一条线上（Z=0）
-            let hitCount = 0;
-            enemies.forEach(enemy => {
-                if (enemy.health <= 0) return;
-                
-                // 只检测X轴距离（因为都在Z=0）
-                const dx = enemy.mesh.position.x - player.position.x;
-                const xDist = Math.abs(dx);
-                
-                // 检查怪物是否在玩家前方
-                const facingRight = player.rotation.y === 0;
-                const enemyInFront = facingRight ? dx > 0 : dx < 0;
-                
-                if (xDist < config.range && enemyInFront) {
-                    const damage = config.damage;
-                    enemy.health -= damage;
-                    enemy.hitFlash = 8;
-                    enemy.isHit = true;
-                    enemy.hitTime = Date.now();
-                    hitCount++;
-                    
-                    // 击退 - 在X轴上击退
-                    const knockback = 0.5 + weaponLevel * 0.15;
-                    const knockDir = facingRight ? 1 : -1;
-                    enemy.mesh.position.x += knockDir * knockback;
-                    // 保持在Z=0
-                    enemy.mesh.position.z = 0;
-                    
-                    // 受伤特效
-                    createEnemyHitEffect(enemy.mesh.position, config.color, damage);
-                    showDamageNumber(enemy.mesh.position, damage);
-                    
-                    comboCount++;
-                    comboTimer = 2500;
-                    
-                    if (comboCount > 1 && comboCount % 5 === 0) {
-                        score += comboCount * 5;
-                        showComboText(comboCount);
-                    }
-                }
-            });
-            
-            if (hitCount > 0) {
-                score += config.damage * hitCount;
-            }
-            
-            updateUI();
-        }
-        
-        // ==================== 特效系统 ====================
-        
-        // 剑气特效 - 根据武器等级越来越华丽
-        function createSlashEffect(config) {
-            const slashCount = weaponLevel >= 8 ? 3 : weaponLevel >= 5 ? 2 : 1;
-            
-            for (let i = 0; i < slashCount; i++) {
-                setTimeout(() => {
-                    // 主剑气
-                    const slashGeo = new THREE.RingGeometry(
-                        0.5 * config.slashSize, 
-                        1.5 * config.slashSize, 
-                        0, 
-                        Math.PI * 1.3
-                    );
-                    const slashMat = new THREE.MeshBasicMaterial({
-                        color: config.color,
-                        transparent: true,
-                        opacity: 0.8,
-                        side: THREE.DoubleSide
-                    });
-                    const slash = new THREE.Mesh(slashGeo, slashMat);
-                    
-                    const facingRight = player.rotation.y === 0;
-                    slash.position.copy(player.position);
-                    slash.position.y += 0.8 + i * 0.3;
-                    slash.position.z = 0; // 在Z=0平面上
-                    slash.position.x += facingRight ? 0.8 : -0.8;
-                    slash.rotation.x = -Math.PI / 2;
-                    slash.rotation.z = facingRight ? -Math.PI / 3 : Math.PI * 0.67;
-                    
-                    scene.add(slash);
-                    
-                    // 剑气飞行
-                    let distance = 0;
-                    const maxDistance = config.range * 2;
-                    const speed = 0.5;
-                    const direction = facingRight ? 1 : -1;
-                    
-                    const anim = () => {
-                        distance += speed;
-                        slash.position.x += speed * direction;
-                        slash.position.z = 0; // 保持在Z=0
-                        slash.scale.multiplyScalar(1.02);
-                        slash.material.opacity -= 0.015;
-                        
-                        // 高级武器剑气带拖尾
-                        if (weaponLevel >= 6 && Math.random() > 0.3) {
-                            createTrailParticle(slash.position, config.color);
-                        }
-                        
-                        if (slash.material.opacity > 0 && distance < maxDistance) {
-                            requestAnimationFrame(anim);
-                        } else {
-                            scene.remove(slash);
-                        }
-                    };
-                    anim();
-                    
-                    // 额外剑气层
-                    if (weaponLevel >= 4) {
-                        createSecondarySlash(config, i);
-                    }
-                    
-                }, i * 80);
-            }
-            
-            // 终极武器全屏闪光
-            if (config.ultimate) {
-                createUltimateFlash();
-            }
-        }
-        
-        function createSecondarySlash(config, index) {
-            const slashGeo = new THREE.RingGeometry(
-                0.3 * config.slashSize, 
-                0.8 * config.slashSize, 
-                0, 
-                Math.PI
-            );
-            const slashMat = new THREE.MeshBasicMaterial({
-                color: 0xffffff,
-                transparent: true,
-                opacity: 0.5,
-                side: THREE.DoubleSide
-            });
-            const slash = new THREE.Mesh(slashGeo, slashMat);
-            
-            const facingRight = player.rotation.y === 0;
-            slash.position.copy(player.position);
-            slash.position.y += 0.8;
-            slash.position.x += facingRight ? 0.8 : -0.8;
-            slash.rotation.x = -Math.PI / 2;
-            slash.rotation.z = facingRight ? -Math.PI / 3 : Math.PI * 0.67;
-            slash.scale.setScalar(0.8);
-            
-            scene.add(slash);
-            
-            let distance = 0;
-            const anim = () => {
-                distance += 0.35;
-                slash.position.x += (facingRight ? 0.35 : -0.35);
-                slash.scale.multiplyScalar(1.015);
-                slash.material.opacity -= 0.02;
-                
-                if (slash.material.opacity > 0 && distance < config.range * 1.5) {
-                    requestAnimationFrame(anim);
-                } else {
-                    scene.remove(slash);
-                }
-            };
-            anim();
-        }
-        
-        function createTrailParticle(pos, color) {
-            const particle = new THREE.Mesh(
-                new THREE.SphereGeometry(0.06, 6, 6),
-                new THREE.MeshBasicMaterial({
-                    color: color,
-                    transparent: true,
-                    opacity: 0.6
-                })
-            );
-            particle.position.copy(pos);
-            particle.position.y += (Math.random() - 0.5) * 0.3;
-            particle.position.z += (Math.random() - 0.5) * 0.3;
-            scene.add(particle);
-            
-            let life = 20;
-            const anim = () => {
-                particle.scale.multiplyScalar(0.92);
-                particle.material.opacity -= 0.03;
-                life--;
-                if (life > 0) requestAnimationFrame(anim);
-                else scene.remove(particle);
-            };
-            anim();
-        }
-        
-        function createUltimateFlash() {
-            const flash = new THREE.Mesh(
-                new THREE.PlaneGeometry(100, 60),
-                new THREE.MeshBasicMaterial({
-                    color: 0xffffff,
-                    transparent: true,
-                    opacity: 0.4
-                })
-            );
-            flash.position.copy(player.position);
-            flash.position.y += 5;
-            flash.position.z = 10;
-            scene.add(flash);
-            
-            let opacity = 0.4;
-            const anim = () => {
-                opacity -= 0.02;
-                flash.material.opacity = opacity;
-                if (opacity > 0) requestAnimationFrame(anim);
-                else scene.remove(flash);
-            };
-            anim();
-        }
-        
-        // 敌人受击特效
-        function createEnemyHitEffect(pos, color, damage) {
-            // 血液/碎片飞溅
-            const particleCount = 8 + Math.floor(damage / 20);
-            
-            for (let i = 0; i < particleCount; i++) {
-                const size = 0.06 + Math.random() * 0.08;
-                const particle = new THREE.Mesh(
-                    new THREE.SphereGeometry(size, 6, 6),
-                    new THREE.MeshBasicMaterial({ 
-                        color: i % 2 === 0 ? color : 0xff0000,
-                        transparent: true,
-                        opacity: 0.9
-                    })
-                );
-                
-                particle.position.copy(pos);
-                particle.position.y += 0.5 + Math.random() * 0.5;
-                particle.position.x += (Math.random() - 0.5) * 0.4;
-                particle.position.z += (Math.random() - 0.5) * 0.4;
-                
-                scene.add(particle);
-                
-                const velocity = new THREE.Vector3(
-                    (Math.random() - 0.5) * 0.25,
-                    Math.random() * 0.25,
-                    (Math.random() - 0.5) * 0.25
-                );
-                
-                let life = 30;
-                const anim = () => {
-                    particle.position.add(velocity);
-                    velocity.y -= 0.012;
-                    velocity.x *= 0.98;
-                    velocity.z *= 0.98;
-                    particle.scale.multiplyScalar(0.94);
-                    particle.material.opacity -= 0.025;
-                    
-                    life--;
-                    if (life > 0 && particle.material.opacity > 0) {
-                        requestAnimationFrame(anim);
-                    } else {
-                        scene.remove(particle);
-                    }
-                };
-                anim();
-            }
-            
-            // 冲击波环
-            const ringGeo = new THREE.RingGeometry(0.1, 0.4, 16);
-            const ringMat = new THREE.MeshBasicMaterial({
-                color: color,
-                transparent: true,
-                opacity: 0.7,
-                side: THREE.DoubleSide
-            });
-            const ring = new THREE.Mesh(ringGeo, ringMat);
-            ring.position.copy(pos);
-            ring.position.y = 0.1;
-            ring.rotation.x = -Math.PI / 2;
-            scene.add(ring);
-            
-            let scale = 1;
-            const ringAnim = () => {
-                scale += 0.2;
-                ring.scale.set(scale, scale, scale);
-                ring.material.opacity -= 0.04;
-                if (ring.material.opacity > 0) requestAnimationFrame(ringAnim);
-                else scene.remove(ring);
-            };
-            ringAnim();
-            
-            // 受击闪光
-            const flash = new THREE.PointLight(color, 2, 5);
-            flash.position.copy(pos);
-            flash.position.y += 0.5;
-            scene.add(flash);
-            
-            let intensity = 2;
-            const flashAnim = () => {
-                intensity -= 0.15;
-                flash.intensity = intensity;
-                if (intensity > 0) requestAnimationFrame(flashAnim);
-                else scene.remove(flash);
-            };
-            flashAnim();
-        }
-        
-        // 显示伤害数字
-        function showDamageNumber(pos, damage) {
-            const vector = pos.clone();
-            vector.y += 1.5;
-            vector.project(camera);
-            
-            const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
-            const y = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
-            
-            const div = document.createElement('div');
-            div.className = 'damageNumber';
-            div.style.left = x + 'px';
-            div.style.top = y + 'px';
-            div.textContent = `-${damage}`;
-            document.getElementById('ui').appendChild(div);
-            
-            setTimeout(() => div.remove(), 1000);
-        }
-        
-        function createJumpEffect(pos) {
-            for (let i = 0; i < 10; i++) {
-                const particle = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.06, 6, 6),
-                    new THREE.MeshBasicMaterial({ 
-                        color: 0x88ff88, 
-                        transparent: true,
-                        opacity: 0.8
-                    })
-                );
-                particle.position.copy(pos);
-                particle.position.y = 0.3;
-                particle.velocity = new THREE.Vector3(
-                    (Math.random() - 0.5) * 0.3,
-                    Math.random() * 0.25,
-                    (Math.random() - 0.5) * 0.3
-                );
-                scene.add(particle);
-                
-                let life = 40;
-                const anim = () => {
-                    particle.position.add(particle.velocity);
-                    particle.velocity.y -= 0.008;
-                    particle.scale.multiplyScalar(0.95);
-                    life--;
-                    if (life > 0) requestAnimationFrame(anim);
-                    else scene.remove(particle);
-                };
-                anim();
-            }
-        }
-        
-        function createHitEffect(pos, color, level = 1) {
-            const count = 5 + level * 2;
-            
-            for (let i = 0; i < count; i++) {
-                const size = 0.08 + Math.random() * 0.08;
-                const particle = new THREE.Mesh(
-                    new THREE.SphereGeometry(size, 6, 6),
-                    new THREE.MeshBasicMaterial({ color: color })
-                );
-                particle.position.copy(pos);
-                particle.position.x += (Math.random() - 0.5) * 0.6;
-                particle.position.y += (Math.random() - 0.5) * 0.6 + 0.5;
-                particle.position.z += (Math.random() - 0.5) * 0.6;
-                scene.add(particle);
-                
-                const velocity = new THREE.Vector3(
-                    (Math.random() - 0.5) * 0.15,
-                    Math.random() * 0.15,
-                    (Math.random() - 0.5) * 0.15
-                );
-                
-                let life = 25;
-                const anim = () => {
-                    particle.position.add(velocity);
-                    velocity.y -= 0.005;
-                    particle.scale.multiplyScalar(0.92);
-                    life--;
-                    if (life > 0) requestAnimationFrame(anim);
-                    else scene.remove(particle);
-                };
-                anim();
-            }
-        }
-        
-        function createExplosion(pos, color, scale = 1) {
-            const count = 20 * scale;
-            
-            for (let i = 0; i < count; i++) {
-                const particle = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.08 * scale, 6, 6),
-                    new THREE.MeshBasicMaterial({ color: color })
-                );
-                particle.position.copy(pos);
-                particle.position.y += 0.5;
-                
-                const angle = (Math.random() * Math.PI * 2);
-                const speed = 0.1 + Math.random() * 0.2;
-                const velocity = new THREE.Vector3(
-                    Math.cos(angle) * speed,
-                    Math.random() * 0.3,
-                    Math.sin(angle) * speed
-                );
-                
-                scene.add(particle);
-                
-                let life = 40;
-                const anim = () => {
-                    particle.position.add(velocity);
-                    velocity.y -= 0.01;
-                    velocity.x *= 0.98;
-                    velocity.z *= 0.98;
-                    particle.scale.multiplyScalar(0.96);
-                    life--;
-                    if (life > 0) requestAnimationFrame(anim);
-                    else scene.remove(particle);
-                };
-                anim();
-            }
-        }
-        
-        function createLevelUpEffect() {
-            for (let i = 0; i < 3; i++) {
-                setTimeout(() => {
-                    const ringGeo = new THREE.RingGeometry(0.5 + i * 0.3, 0.8 + i * 0.3, 32);
-                    const ringMat = new THREE.MeshBasicMaterial({
-                        color: weaponConfigs[weaponLevel].color,
-                        transparent: true,
-                        opacity: 0.8,
-                        side: THREE.DoubleSide
-                    });
-                    const ring = new THREE.Mesh(ringGeo, ringMat);
-                    ring.position.copy(player.position);
-                    ring.position.y += 1;
-                    ring.rotation.x = -Math.PI / 2;
-                    scene.add(ring);
-                    
-                    let scale = 1;
-                    const anim = () => {
-                        scale += 0.1;
-                        ring.scale.set(scale, scale, scale);
-                        ring.material.opacity -= 0.02;
-                        ring.position.y += 0.05;
-                        if (ring.material.opacity > 0) requestAnimationFrame(anim);
-                        else scene.remove(ring);
-                    };
-                    anim();
-                }, i * 200);
-            }
-            
-            for (let i = 0; i < 30; i++) {
-                const particle = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.1, 6, 6),
-                    new THREE.MeshBasicMaterial({ color: 0xffd700 })
-                );
-                particle.position.copy(player.position);
-                particle.position.y += 1;
-                
-                const angle = (i / 30) * Math.PI * 2;
-                const velocity = new THREE.Vector3(
-                    Math.cos(angle) * 0.2,
-                    0.3 + Math.random() * 0.2,
-                    Math.sin(angle) * 0.2
-                );
-                
-                scene.add(particle);
-                
-                let life = 50;
-                const anim = () => {
-                    particle.position.add(velocity);
-                    velocity.y -= 0.01;
-                    particle.scale.multiplyScalar(0.97);
-                    life--;
-                    if (life > 0) requestAnimationFrame(anim);
-                    else scene.remove(particle);
-                };
-                anim();
-            }
-        }
-        
-        function showWeaponUpgradePopup() {
-            const popup = document.createElement('div');
-            popup.className = 'weaponUpgradePopup';
-            popup.innerHTML = `✨ 武器升级!<br>${weaponConfigs[weaponLevel].name}`;
-            document.getElementById('ui').appendChild(popup);
-            setTimeout(() => popup.remove(), 2000);
-        }
-        
-        function showDamageEffect() {
-            const overlay = document.getElementById('damageOverlay');
-            overlay.style.opacity = '1';
-            setTimeout(() => overlay.style.opacity = '0', 150);
-        }
-        
-        function showComboText(combo) {
-            const div = document.createElement('div');
-            div.style.cssText = `
-                position: absolute;
-                left: 50%;
-                top: 35%;
-                transform: translate(-50%, -50%);
-                color: #ff0;
-                font-size: 36px;
-                font-weight: bold;
-                text-shadow: 2px 2px 4px #f00, 0 0 20px #ff0;
-                pointer-events: none;
-                animation: comboAnim 1.2s ease-out forwards;
-            `;
-            div.textContent = `${combo} 连击! 🔥`;
-            document.getElementById('ui').appendChild(div);
-            setTimeout(() => div.remove(), 1200);
-        }
-        
-        // ==================== UI更新 ====================
-        function updateUI() {
-            document.getElementById('healthFill').style.width = (playerHealth / maxHealth * 100) + '%';
-            document.getElementById('expFill').style.width = (exp / expToNext * 100) + '%';
-            document.getElementById('score').textContent = score;
-            document.getElementById('kills').textContent = kills;
-            
-            const levelNames = ['', '草原启程', '森林深处', '终极决战'];
-            document.getElementById('levelInfo').textContent = `第 ${currentLevel} 关 - ${levelNames[currentLevel]}`;
-            document.getElementById('weaponInfo').textContent = 
-                `${weaponConfigs[weaponLevel].name} (伤害:${weaponConfigs[weaponLevel].damage})`;
-        }
-        
-        // ==================== 事件处理 ====================
-        function onWindowResize() {
-            const width = window.innerWidth;
-            const height = window.innerHeight;
-            
-            camera.aspect = width / height;
-            camera.updateProjectionMatrix();
-            renderer.setSize(width, height);
-            
-            // 移动端适配：调整相机参数
-            if (width < 768) {
-                camera.fov = 70; // 移动端使用更大的视野角度
-            } else {
-                camera.fov = 60;
-            }
-            camera.updateProjectionMatrix();
-        }
-        
-        function onMouseDown(e) {
-            if (e.button === 0) attack();
-        }
-        
-        // ==================== 主循环 ====================
-        let lastTime = 0;
-        function animate(currentTime) {
-            animationId = requestAnimationFrame(animate);
-            
-            // 计算delta time
-            const deltaTime = currentTime - lastTime;
-            lastTime = currentTime;
-            
-            if (gameRunning && player) {
-                updatePlayer(deltaTime || 16);
-                updateEnemies(deltaTime || 16);
-                updateEnvironment();
-                updateCamera();
-                updateUI();
-            }
-            
-            renderer.render(scene, camera);
-        }
-        
-        // 启动
-        init();
-        
-        // 强制初始调整大小
-        setTimeout(() => {
-            onWindowResize();
-        }, 100);
+
+        renderer.render(scene, camera)
+      }
+
+      // 启动
+      init()
     </script>
-</body>
+  </body>
 </html>
