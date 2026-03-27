@@ -317,6 +317,11 @@
             #scoreBoard { font-size: 14px; }
             #levelInfo { font-size: 18px; }
             #weaponInfo { font-size: 14px; }
+            #playerFace {
+                width: 70px !important;
+                height: 95px !important;
+                border-width: 2px !important;
+            }
         }
     </style>
 </head>
@@ -438,7 +443,7 @@
             
             // 检测是否移动端
             const isMobile = window.innerWidth < 768;
-            const fov = isMobile ? 70 : 60;
+            const fov = isMobile ? 75 : 60;
             
             camera = new THREE.PerspectiveCamera(fov, window.innerWidth / window.innerHeight, 0.1, 1000);
             // 设置初始相机位置
@@ -703,81 +708,16 @@
             body.castShadow = true;
             group.add(body);
             
-            // 头部 - 使用翠翠图片，完全展示，始终面向相机
-            const textureLoader = new THREE.TextureLoader();
-            textureLoader.load('cuicui.jpg', (texture) => {
-                texture.encoding = THREE.sRGBEncoding;
-                
-                // 创建圆形头像面片
-                const headSize = 0.6;
-                const faceGeo = new THREE.CircleGeometry(headSize, 32);
-                
-                // 调整纹理以完整显示图片
-                const aspect = 918 / 1360; // 原图比例
-                const repeatX = 1;
-                const repeatY = 1 / aspect;
-                
-                texture.wrapS = THREE.ClampToEdgeWrapping;
-                texture.wrapT = THREE.ClampToEdgeWrapping;
-                texture.repeat.set(repeatX, repeatY);
-                texture.offset.set((1 - repeatX) / 2, (1 - repeatY) / 2);
-                
-                const faceMat = new THREE.MeshBasicMaterial({
-                    map: texture,
-                    transparent: true,
-                    side: THREE.DoubleSide
-                });
-                
-                // 创建头像容器，用于 Billboard 效果
-                const faceContainer = new THREE.Group();
-                faceContainer.position.set(0, 1.35, 0);
-                faceContainer.name = 'faceContainer';
-                group.add(faceContainer);
-                
-                const faceMesh = new THREE.Mesh(faceGeo, faceMat);
-                faceMesh.position.z = 0.15;
-                faceMesh.name = 'face';
-                faceContainer.add(faceMesh);
-                
-                // 头像边框光环
-                const ringGeo = new THREE.RingGeometry(headSize * 1.05, headSize * 1.15, 32);
-                const ringMat = new THREE.MeshBasicMaterial({
-                    color: 0xffd700,
-                    transparent: true,
-                    opacity: 0.6,
-                    side: THREE.DoubleSide
-                });
-                const ring = new THREE.Mesh(ringGeo, ringMat);
-                ring.position.z = 0.14;
-                ring.name = 'headRing';
-                faceContainer.add(ring);
-                
-                // 头像发光
-                const glowGeo = new THREE.CircleGeometry(headSize * 1.3, 32);
-                const glowMat = new THREE.MeshBasicMaterial({
-                    color: 0xffd700,
-                    transparent: true,
-                    opacity: 0.2,
-                    side: THREE.DoubleSide
-                });
-                const glow = new THREE.Mesh(glowGeo, glowMat);
-                glow.position.z = 0.13;
-                glow.name = 'headGlow';
-                faceContainer.add(glow);
-                
-                // 保存引用到 userData 用于 billboard 更新
-                player.userData.faceContainer = faceContainer;
-                
-            }, undefined, (err) => {
-                console.log('头像加载失败，使用默认');
-                // 备用头像
-                const headGeo = new THREE.SphereGeometry(0.35, 16, 16);
-                const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
-                const head = new THREE.Mesh(headGeo, headMat);
-                head.position.y = 1.2;
-                head.castShadow = true;
-                group.add(head);
-            });
+            // 头部 - 简化为一个球体作为头部基础
+            const headGeo = new THREE.SphereGeometry(0.32, 16, 16);
+            const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 1.25;
+            head.castShadow = true;
+            group.add(head);
+            
+            // 保存头部引用用于更新2D头像位置
+            player.userData.head = head;
             
             // 手臂
             const armGeo = new THREE.CylinderGeometry(0.09, 0.08, 0.7, 8);
@@ -1132,6 +1072,7 @@
         // ==================== 游戏逻辑 ====================
         function startGame() {
             document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('playerFace').style.display = 'block';
             gameRunning = true;
             currentLevel = 1;
             score = 0;
@@ -1158,6 +1099,7 @@
         function restartGame() {
             document.getElementById('gameOverScreen').style.display = 'none';
             document.getElementById('victoryScreen').style.display = 'none';
+            document.getElementById('playerFace').style.display = 'none';
             
             // 清理场景
             enemies.forEach(e => {
@@ -1183,6 +1125,7 @@
         
         function nextLevel() {
             document.getElementById('levelCompleteScreen').style.display = 'none';
+            document.getElementById('playerFace').style.display = 'block';
             currentLevel++;
             
             playerHealth = Math.min(playerHealth + 50, maxHealth);
@@ -1204,6 +1147,7 @@
         
         function gameOver(reason) {
             gameRunning = false;
+            document.getElementById('playerFace').style.display = 'none';
             document.getElementById('gameOverText').innerHTML = 
                 `${reason}<br><br>最终分数: ${score}<br>击杀数: ${kills}<br>最高武器: ${weaponConfigs[weaponLevel].name}`;
             document.getElementById('gameOverScreen').style.display = 'flex';
@@ -1211,6 +1155,7 @@
         
         function levelComplete() {
             gameRunning = false;
+            document.getElementById('playerFace').style.display = 'none';
             const levelNames = ['', '草原启程', '森林深处', '终极决战'];
             document.getElementById('levelCompleteText').innerHTML = 
                 `🎉 恭喜通过第${currentLevel}关：${levelNames[currentLevel]}！<br><br>` +
@@ -1220,6 +1165,7 @@
         
         function victory() {
             gameRunning = false;
+            document.getElementById('playerFace').style.display = 'none';
             document.getElementById('victoryText').innerHTML = 
                 `🏆 恭喜翠翠完成大冒险！<br><br>` +
                 `最终分数: ${score}<br>` +
@@ -1289,12 +1235,18 @@
                 }
             }
             
-            // 转向（身体转向，但头像用 Billboard 始终面向相机）
+            // 转向（身体转向，头像保持正面）
             if (moveX > 0) {
                 player.rotation.y = 0;
             }
             if (moveX < 0) {
                 player.rotation.y = Math.PI;
+            }
+            
+            // 确保头像可见
+            const faceDiv = document.getElementById('playerFace');
+            if (faceDiv && gameRunning) {
+                faceDiv.style.display = 'block';
             }
             
             // 攻击
@@ -1309,8 +1261,8 @@
             
             if (invincibleTime > 0) invincibleTime -= deltaTime;
             
-            // 头像 Billboard 效果 - 始终面向相机
-            updateFaceBillboard();
+            // 更新2D头像位置
+            updatePlayerFacePosition();
             
             if (comboTimer > 0) {
                 comboTimer -= deltaTime;
@@ -1318,19 +1270,31 @@
             }
         }
         
-        function updateFaceBillboard() {
-            // Billboard 效果：头像始终面向相机
-            if (player && player.userData.faceContainer) {
-                const faceContainer = player.userData.faceContainer;
-                
-                // 让头像容器面向相机
-                faceContainer.lookAt(camera.position);
-                
-                // 头像发光旋转动画
-                const headRing = faceContainer.getObjectByName('headRing');
-                if (headRing) {
-                    headRing.rotation.z -= 0.02;
-                }
+        function updatePlayerFacePosition() {
+            // 更新2D头像位置，跟随3D玩家头部
+            if (!player || !gameRunning) return;
+            
+            const faceDiv = document.getElementById('playerFace');
+            if (!faceDiv) return;
+            
+            // 获取头部在世界坐标中的位置
+            const headPos = new THREE.Vector3();
+            headPos.setFromMatrixPosition(player.userData.head.matrixWorld);
+            headPos.y += 0.4; // 稍微向上偏移
+            
+            // 转换为屏幕坐标
+            headPos.project(camera);
+            
+            const x = (headPos.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-(headPos.y * 0.5) + 0.5) * window.innerHeight;
+            
+            // 检查是否在相机前方
+            if (headPos.z < 1) {
+                faceDiv.style.display = 'block';
+                faceDiv.style.left = x + 'px';
+                faceDiv.style.top = y + 'px';
+            } else {
+                faceDiv.style.display = 'none';
             }
         }
         
