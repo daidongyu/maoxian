@@ -406,7 +406,7 @@
       let comboCount = 0,
         comboTimer = 0
 
-      // 武器配置 - 10个等级，都有剑气效果
+      // 武器配置 - 20个等级，都有波动发光阴影剑气效果
       const weaponConfigs = {
         1: {
           name: '⚔️ 星光剑',
@@ -496,6 +496,96 @@
           range: 6.5,
           glow: 1.0,
           effect: 'holy',
+          trail: true,
+        },
+        11: {
+          name: '💫 虚空剑',
+          color: 0x4a0080,
+          damage: 250,
+          range: 7,
+          glow: 1.0,
+          effect: 'void',
+          trail: true,
+        },
+        12: {
+          name: '☀️ 太阳剑',
+          color: 0xffaa00,
+          damage: 300,
+          range: 7.5,
+          glow: 1.0,
+          effect: 'sun',
+          trail: true,
+        },
+        13: {
+          name: '🌙 月华剑',
+          color: 0xaaaaff,
+          damage: 360,
+          range: 8,
+          glow: 1.0,
+          effect: 'moon',
+          trail: true,
+        },
+        14: {
+          name: '🔮 魔导剑',
+          color: 0x8b00ff,
+          damage: 430,
+          range: 8.5,
+          glow: 1.0,
+          effect: 'magic',
+          trail: true,
+        },
+        15: {
+          name: '⚜️ 神罚剑',
+          color: 0xff0088,
+          damage: 500,
+          range: 9,
+          glow: 1.0,
+          effect: 'divine',
+          trail: true,
+        },
+        16: {
+          name: '💎 永恒剑',
+          color: 0x00ffaa,
+          damage: 580,
+          range: 9.5,
+          glow: 1.0,
+          effect: 'eternal',
+          trail: true,
+        },
+        17: {
+          name: '🔥 混沌剑',
+          color: 0xff0000,
+          damage: 660,
+          range: 10,
+          glow: 1.0,
+          effect: 'chaos',
+          trail: true,
+        },
+        18: {
+          name: '🌊 深海剑',
+          color: 0x0066cc,
+          damage: 750,
+          range: 10.5,
+          glow: 1.0,
+          effect: 'abyss',
+          trail: true,
+        },
+        19: {
+          name: '⭐ 宇宙剑',
+          color: 0xffffff,
+          damage: 850,
+          range: 11,
+          glow: 1.0,
+          effect: 'cosmic',
+          trail: true,
+        },
+        20: {
+          name: '👁️ 起源剑',
+          color: 0xff66ff,
+          damage: 1000,
+          range: 12,
+          glow: 1.0,
+          effect: 'origin',
           trail: true,
         },
       }
@@ -628,7 +718,7 @@
 
         // 默认球体头部（备用）
         const defaultHeadMat = new THREE.MeshStandardMaterial({
-          color: 0xffdbac,
+          color: 0xffdd00, // 黄色
         })
         const defaultHeadGeo = new THREE.SphereGeometry(0.5, 16, 16)
         const defaultHead = new THREE.Mesh(defaultHeadGeo, defaultHeadMat)
@@ -735,18 +825,92 @@
         const config = weaponConfigs[level]
         const group = new THREE.Group()
 
-        // 剑气光效（始终显示）
-        const glowGeo = new THREE.SphereGeometry(0.6, 16, 16)
-        const glowMat = new THREE.MeshBasicMaterial({
+        // ===== 波动的发光阴影剑气效果 =====
+        // 阴影基底 - 波动的椭圆阴影
+        const shadowGeo = new THREE.CircleGeometry(0.8 + level * 0.1, 32)
+        const shadowMat = new THREE.MeshBasicMaterial({
+          color: config.color,
+          transparent: true,
+          opacity: 0.4,
+          side: THREE.DoubleSide,
+        })
+        const shadow = new THREE.Mesh(shadowGeo, shadowMat)
+        shadow.rotation.x = -Math.PI / 2
+        shadow.position.y = 0.1
+        shadow.name = 'shadow'
+        group.add(shadow)
+
+        // 内层波动光环
+        const innerGlowGeo = new THREE.RingGeometry(0.3, 0.6 + level * 0.05, 32)
+        const innerGlowMat = new THREE.MeshBasicMaterial({
+          color: config.color,
+          transparent: true,
+          opacity: 0.6,
+          side: THREE.DoubleSide,
+        })
+        const innerGlow = new THREE.Mesh(innerGlowGeo, innerGlowMat)
+        innerGlow.rotation.x = -Math.PI / 2
+        innerGlow.position.y = 0.05
+        innerGlow.name = 'innerGlow'
+        group.add(innerGlow)
+
+        // 外层波动光环
+        const outerGlowGeo = new THREE.RingGeometry(0.5 + level * 0.08, 1.0 + level * 0.1, 32)
+        const outerGlowMat = new THREE.MeshBasicMaterial({
           color: config.color,
           transparent: true,
           opacity: 0.3,
           side: THREE.DoubleSide,
         })
-        const glow = new THREE.Mesh(glowGeo, glowMat)
-        glow.position.y = 0.8
-        glow.scale.set(1.5, 2, 0.5)
-        group.add(glow)
+        const outerGlow = new THREE.Mesh(outerGlowGeo, outerGlowMat)
+        outerGlow.rotation.x = -Math.PI / 2
+        outerGlow.position.y = 0.02
+        outerGlow.name = 'outerGlow'
+        group.add(outerGlow)
+
+        // 最外层淡淡光环
+        const farGlowGeo = new THREE.RingGeometry(0.8 + level * 0.12, 1.3 + level * 0.15, 32)
+        const farGlowMat = new THREE.MeshBasicMaterial({
+          color: config.color,
+          transparent: true,
+          opacity: 0.15,
+          side: THREE.DoubleSide,
+        })
+        const farGlow = new THREE.Mesh(farGlowGeo, farGlowMat)
+        farGlow.rotation.x = -Math.PI / 2
+        farGlow.position.y = 0.01
+        farGlow.name = 'farGlow'
+        group.add(farGlow)
+
+        // 波动发光球体 - 剑身上方的发光阴影
+        const waveGeo = new THREE.SphereGeometry(0.4 + level * 0.05, 16, 16)
+        const waveMat = new THREE.MeshBasicMaterial({
+          color: config.color,
+          transparent: true,
+          opacity: 0.25,
+        })
+        const wave = new THREE.Mesh(waveGeo, waveMat)
+        wave.position.y = 1.2
+        wave.scale.set(1, 0.6, 1)
+        wave.name = 'wave'
+        group.add(wave)
+
+        // 波动条纹效果
+        const stripeCount = 3
+        for (let i = 0; i < stripeCount; i++) {
+          const stripeGeo = new THREE.RingGeometry(0.2 + i * 0.15, 0.25 + i * 0.15, 32)
+          const stripeMat = new THREE.MeshBasicMaterial({
+            color: config.color,
+            transparent: true,
+            opacity: 0.2 - i * 0.05,
+            side: THREE.DoubleSide,
+          })
+          const stripe = new THREE.Mesh(stripeGeo, stripeMat)
+          stripe.rotation.x = -Math.PI / 2
+          stripe.position.y = 0.5 + i * 0.2
+          stripe.name = 'stripe' + i
+          group.add(stripe)
+        }
 
         // 剑柄
         const handleGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.5, 8)
@@ -765,7 +929,7 @@
         const guard = new THREE.Mesh(guardGeo, guardMat)
         group.add(guard)
 
-        // 剑身 - 更大更帅
+        // 剑身 - 发光效果
         const bladeLength = 1.2 + level * 0.2
         const bladeGeo = new THREE.BoxGeometry(0.18, bladeLength, 0.04)
         const bladeMat = new THREE.MeshStandardMaterial({
@@ -779,30 +943,28 @@
         blade.position.y = bladeLength / 2 + 0.1
         group.add(blade)
 
-        // 剑气轨迹
-        const trailGeo = new THREE.PlaneGeometry(
-          0.3 + level * 0.05,
-          bladeLength * 0.8,
-        )
-        const trailMat = new THREE.MeshBasicMaterial({
+        // 剑身上方的小波动光环
+        const tipGlowGeo = new THREE.SphereGeometry(0.15 + level * 0.02, 12, 12)
+        const tipGlowMat = new THREE.MeshBasicMaterial({
           color: config.color,
           transparent: true,
-          opacity: 0.4 + level * 0.03,
-          side: THREE.DoubleSide,
+          opacity: 0.5,
         })
-        const trail = new THREE.Mesh(trailGeo, trailMat)
-        trail.position.y = bladeLength / 2 + 0.2
-        trail.position.z = 0.05
-        group.add(trail)
+        const tipGlow = new THREE.Mesh(tipGlowGeo, tipGlowMat)
+        tipGlow.position.y = bladeLength + 0.2
+        tipGlow.name = 'tipGlow'
+        group.add(tipGlow)
 
-        // 特效粒子
+        // 特效粒子 - 围绕剑身的波动粒子
         const particleGeo = new THREE.BufferGeometry()
         const particleCount = 15 + level * 5
         const positions = new Float32Array(particleCount * 3)
         for (let i = 0; i < particleCount * 3; i += 3) {
-          positions[i] = (Math.random() - 0.5) * 0.4
-          positions[i + 1] = Math.random() * bladeLength
-          positions[i + 2] = (Math.random() - 0.5) * 0.15
+          const angle = (i / 3) * (Math.PI * 2 / particleCount)
+          const radius = 0.3 + Math.random() * 0.4
+          positions[i] = Math.cos(angle) * radius
+          positions[i + 1] = Math.random() * (bladeLength + 0.5) + 0.2
+          positions[i + 2] = Math.sin(angle) * radius * 0.3
         }
         particleGeo.setAttribute(
           'position',
@@ -817,12 +979,116 @@
         const particles = new THREE.Points(particleGeo, particleMat)
         group.add(particles)
 
-        // 光晕
-        const light = new THREE.PointLight(config.color, config.glow, 8 + level)
-        light.position.y = bladeLength / 2
+        // 剑身周围的波动光环粒子
+        const ringParticleGeo = new THREE.BufferGeometry()
+        const ringParticleCount = 20 + level * 3
+        const ringPositions = new Float32Array(ringParticleCount * 3)
+        for (let i = 0; i < ringParticleCount * 3; i += 3) {
+          const angle = (i / 3) * (Math.PI * 2 / ringParticleCount)
+          const radius = 0.6 + level * 0.08
+          ringPositions[i] = Math.cos(angle) * radius
+          ringPositions[i + 1] = 0.3 + Math.random() * 0.3
+          ringPositions[i + 2] = Math.sin(angle) * radius
+        }
+        ringParticleGeo.setAttribute(
+          'position',
+          new THREE.BufferAttribute(ringPositions, 3),
+        )
+        const ringParticleMat = new THREE.PointsMaterial({
+          color: config.color,
+          size: 0.05 + level * 0.008,
+          transparent: true,
+          opacity: 0.6,
+        })
+        const ringParticles = new THREE.Points(ringParticleGeo, ringParticleMat)
+        ringParticles.name = 'ringParticles'
+        group.add(ringParticles)
+
+        // 发光点光源
+        const light = new THREE.PointLight(config.color, config.glow * 0.8, 6 + level)
+        light.position.y = 0.5
         group.add(light)
 
+        // 阴影点光源
+        const shadowLight = new THREE.PointLight(config.color, config.glow * 0.4, 4 + level)
+        shadowLight.position.y = 0.05
+        group.add(shadowLight)
+
         return group
+      }
+
+      // 剑气波动动画
+      function updateSwordWave(time) {
+        if (!sword) return
+        const config = weaponConfigs[weaponLevel]
+
+        // 更新阴影波动
+        const shadow = sword.getObjectByName('shadow')
+        if (shadow) {
+          const scale = 1 + Math.sin(time * 3) * 0.1
+          shadow.scale.set(scale, scale, 1)
+          shadow.material.opacity = 0.3 + Math.sin(time * 4) * 0.1
+        }
+
+        // 更新内层光环波动
+        const innerGlow = sword.getObjectByName('innerGlow')
+        if (innerGlow) {
+          const scale = 1 + Math.sin(time * 5) * 0.15
+          innerGlow.scale.set(scale, scale, 1)
+          innerGlow.material.opacity = 0.5 + Math.sin(time * 6) * 0.15
+        }
+
+        // 更新外层光环波动
+        const outerGlow = sword.getObjectByName('outerGlow')
+        if (outerGlow) {
+          const scale = 1 + Math.sin(time * 2.5 + 1) * 0.2
+          outerGlow.scale.set(scale, scale, 1)
+          outerGlow.rotation.z += 0.02
+          outerGlow.material.opacity = 0.2 + Math.sin(time * 3.5) * 0.1
+        }
+
+        // 更新最外层光环
+        const farGlow = sword.getObjectByName('farGlow')
+        if (farGlow) {
+          const scale = 1 + Math.sin(time * 2 + 2) * 0.25
+          farGlow.scale.set(scale, scale, 1)
+          farGlow.rotation.z -= 0.015
+          farGlow.material.opacity = 0.1 + Math.sin(time * 2.5) * 0.05
+        }
+
+        // 更新剑身上方波动光球
+        const wave = sword.getObjectByName('wave')
+        if (wave) {
+          const scaleX = 1 + Math.sin(time * 4) * 0.3
+          const scaleY = 0.5 + Math.sin(time * 5) * 0.2
+          wave.scale.set(scaleX, scaleY, 1)
+          wave.material.opacity = 0.15 + Math.sin(time * 3) * 0.1
+        }
+
+        // 更新剑尖发光
+        const tipGlow = sword.getObjectByName('tipGlow')
+        if (tipGlow) {
+          const scale = 1 + Math.sin(time * 6) * 0.3
+          tipGlow.scale.set(scale, scale, scale)
+          tipGlow.material.opacity = 0.4 + Math.sin(time * 7) * 0.2
+        }
+
+        // 更新条纹波动
+        for (let i = 0; i < 3; i++) {
+          const stripe = sword.getObjectByName('stripe' + i)
+          if (stripe) {
+            const scale = 1 + Math.sin(time * (3 + i) + i * 0.5) * 0.2
+            stripe.scale.set(scale, scale, 1)
+            stripe.material.opacity = 0.15 - i * 0.03 + Math.sin(time * (4 + i)) * 0.05
+          }
+        }
+
+        // 更新光环粒子旋转
+        const ringParticles = sword.getObjectByName('ringParticles')
+        if (ringParticles) {
+          ringParticles.rotation.y += 0.03
+          ringParticles.rotation.x = Math.sin(time) * 0.3
+        }
       }
 
       // ==================== 关卡生成 ====================
@@ -1418,8 +1684,8 @@
       }
 
       function checkWeaponUpgrade() {
-        // 10级武器：每5杀升1级
-        const newLevel = Math.min(Math.floor(kills / 5) + 1, 10)
+        // 20级武器：每5杀升1级
+        const newLevel = Math.min(Math.floor(kills / 5) + 1, 20)
         if (newLevel > weaponLevel) {
           weaponLevel = newLevel
 
@@ -2037,12 +2303,20 @@
       function animate() {
         animationId = requestAnimationFrame(animate)
 
+        // 更新时间，用于波动动画
+        const time = Date.now() * 0.001
+
         if (gameRunning) {
           updatePlayer(16)
           updateEnemies(16)
           updateParticles()
           updateCamera()
           updateUI()
+          // 更新剑气波动效果
+          updateSwordWave(time)
+        } else {
+          // 即使游戏未运行也更新波动效果
+          updateSwordWave(time)
         }
 
         renderer.render(scene, camera)
