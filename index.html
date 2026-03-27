@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>翠翠大冒险 - CuiCui Adventure</title>
     <style>
         * {
@@ -16,12 +16,18 @@
             background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 50%, #90EE90 100%);
             font-family: 'Microsoft YaHei', sans-serif;
             touch-action: none;
+            position: fixed;
+            width: 100%;
+            height: 100%;
         }
         
         #gameCanvas {
             display: block;
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
         }
         
         #ui {
@@ -430,14 +436,22 @@
             scene.background = new THREE.Color(0x87CEEB);
             scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
             
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            // 检测是否移动端
+            const isMobile = window.innerWidth < 768;
+            const fov = isMobile ? 70 : 60;
+            
+            camera = new THREE.PerspectiveCamera(fov, window.innerWidth / window.innerHeight, 0.1, 1000);
+            // 设置初始相机位置
+            camera.position.set(0, 3.5, 8);
             
             renderer = new THREE.WebGLRenderer({ 
                 canvas: document.getElementById('gameCanvas'),
-                antialias: true,
-                alpha: true
+                antialias: !isMobile, // 移动端关闭抗锯齿提高性能
+                alpha: true,
+                powerPreference: 'high-performance'
             });
             renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -1118,6 +1132,13 @@
             expToNext = 3;
             
             createPlayer();
+            
+            // 强制设置相机到正确位置
+            if (player) {
+                camera.position.set(player.position.x, player.position.y + 3.5, player.position.z + 8);
+                camera.lookAt(player.position.x, player.position.y + 0.5, player.position.z);
+            }
+            
             generateLevel(currentLevel);
             updateUI();
         }
@@ -1126,11 +1147,7 @@
             document.getElementById('gameOverScreen').style.display = 'none';
             document.getElementById('victoryScreen').style.display = 'none';
             
-            if (player) {
-                scene.remove(player);
-                player = null;
-            }
-            
+            // 清理场景
             enemies.forEach(e => {
                 if (e.label) e.label.remove();
             });
@@ -1139,6 +1156,15 @@
             const endMarker = scene.getObjectByName('endMarker');
             if (endLight) scene.remove(endLight);
             if (endMarker) scene.remove(endMarker);
+            
+            if (player) {
+                scene.remove(player);
+                player = null;
+            }
+            
+            // 重置相机
+            camera.position.set(0, 4, 8);
+            camera.lookAt(0, 0.5, 0);
             
             startGame();
         }
@@ -1357,19 +1383,28 @@
         function updateCamera() {
             if (!player) return;
             
-            // 相机始终固定在玩家位置，让玩家保持在屏幕中央
-            const targetX = player.position.x;
-            const targetY = player.position.y + 4;  // 稍微抬高一点
-            const targetZ = player.position.z + 10; // 相机在玩家后方
+            // 计算相机位置 - 使用固定的相对偏移
+            const offsetX = 0;                  // X轴偏移为0，保持水平居中
+            const offsetY = 3.5;                // 垂直高度
+            const offsetZ = 8;                  // 前后距离
+            
+            const targetX = player.position.x + offsetX;
+            const targetY = player.position.y + offsetY;
+            const targetZ = player.position.z + offsetZ;
             
             // 平滑跟随
-            camera.position.x += (targetX - camera.position.x) * 0.1;
-            camera.position.y += (targetY - camera.position.y) * 0.1;
-            camera.position.z += (targetZ - camera.position.z) * 0.1;
+            camera.position.x += (targetX - camera.position.x) * 0.12;
+            camera.position.y += (targetY - camera.position.y) * 0.12;
+            camera.position.z += (targetZ - camera.position.z) * 0.12;
             
-            // 始终看向玩家前方
-            const lookAtX = player.position.x + (player.rotation.y === 0 ? 5 : -5);
-            camera.lookAt(lookAtX, player.position.y + 0.5, player.position.z);
+            // 始终看向玩家前方（根据朝向）
+            const facingRight = player.rotation.y === 0;
+            const lookOffset = facingRight ? 3 : -3;
+            camera.lookAt(
+                player.position.x + lookOffset,
+                player.position.y + 0.3,
+                player.position.z
+            );
         }
         
         function updateEnemies(deltaTime) {
@@ -2095,9 +2130,20 @@
         
         // ==================== 事件处理 ====================
         function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            
+            camera.aspect = width / height;
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setSize(width, height);
+            
+            // 移动端适配：调整相机参数
+            if (width < 768) {
+                camera.fov = 70; // 移动端使用更大的视野角度
+            } else {
+                camera.fov = 60;
+            }
+            camera.updateProjectionMatrix();
         }
         
         function onMouseDown(e) {
@@ -2105,12 +2151,17 @@
         }
         
         // ==================== 主循环 ====================
-        function animate() {
+        let lastTime = 0;
+        function animate(currentTime) {
             animationId = requestAnimationFrame(animate);
             
-            if (gameRunning) {
-                updatePlayer(16);
-                updateEnemies(16);
+            // 计算delta time
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+            
+            if (gameRunning && player) {
+                updatePlayer(deltaTime || 16);
+                updateEnemies(deltaTime || 16);
                 updateEnvironment();
                 updateCamera();
                 updateUI();
@@ -2121,6 +2172,11 @@
         
         // 启动
         init();
+        
+        // 强制初始调整大小
+        setTimeout(() => {
+            onWindowResize();
+        }, 100);
     </script>
 </body>
 </html>
