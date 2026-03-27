@@ -558,7 +558,7 @@
           (texture) => {
             const material = new THREE.SpriteMaterial({ map: texture })
             const head = new THREE.Sprite(material)
-            head.scale.set(0.8, 0.8, 1)
+            head.scale.set(1.2, 1.2, 1)
             head.position.y = 1.4
             head.name = 'head'
             group.add(head)
@@ -570,7 +570,7 @@
           () => {
             // 加载失败时使用默认头像
             const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac })
-            const headGeo = new THREE.SphereGeometry(0.35, 16, 16)
+            const headGeo = new THREE.SphereGeometry(0.5, 16, 16)
             const head = new THREE.Mesh(headGeo, headMat)
             head.position.y = 1.4
             head.name = 'head'
@@ -580,20 +580,11 @@
 
         // 默认头像（等待图片加载）
         const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac })
-        const headGeo = new THREE.SphereGeometry(0.35, 16, 16)
+        const headGeo = new THREE.SphereGeometry(0.5, 16, 16)
         const head = new THREE.Mesh(headGeo, headMat)
         head.position.y = 1.4
         head.name = 'head'
         group.add(head)
-
-        // 眼睛
-        const eyeGeo = new THREE.SphereGeometry(0.05, 8, 8)
-        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 })
-        const leftEye = new THREE.Mesh(eyeGeo, eyeMat)
-        leftEye.position.set(-0.12, 1.45, 0.28)
-        const rightEye = new THREE.Mesh(eyeGeo, eyeMat)
-        rightEye.position.set(0.12, 1.45, 0.28)
-        group.add(leftEye, rightEye)
 
         // 手臂
         const armGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.8, 8)
