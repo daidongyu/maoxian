@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, user-scalable=no"
     />
-    <title>翠翠大冒险</title>
+    <title>翠翠大冒险 - CuiCui Adventure</title>
     <style>
       * {
         margin: 0;
@@ -40,19 +40,21 @@
         position: absolute;
         top: 20px;
         left: 20px;
-        width: 200px;
-        height: 25px;
-        background: rgba(0, 0, 0, 0.5);
-        border: 2px solid #fff;
-        border-radius: 12px;
+        width: 220px;
+        height: 28px;
+        background: rgba(0, 0, 0, 0.6);
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        border-radius: 14px;
         overflow: hidden;
+        box-shadow: 0 0 10px rgba(0,0,0,0.5);
       }
 
       #healthFill {
         height: 100%;
         width: 100%;
-        background: linear-gradient(90deg, #ff4444, #ff8844);
+        background: linear-gradient(90deg, #ff4444, #ff8844, #ffaa44);
         transition: width 0.3s;
+        border-radius: 12px;
       }
 
       #scoreBoard {
@@ -82,9 +84,10 @@
         color: #fff;
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
         font-size: 15px;
-        background: rgba(0, 0, 0, 0.4);
-        padding: 5px 10px;
-        border-radius: 8px;
+        background: linear-gradient(135deg, rgba(0,0,0,0.6), rgba(50,50,100,0.4));
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.2);
       }
 
       #startScreen,
@@ -343,11 +346,11 @@
     <div id="startScreen">
       <h1 class="title">🌿 翠翠草原大冒险</h1>
       <p class="subtitle">
-        翠翠来到了一片美丽的草原<br />
+        翠翠获得了一把星光剑！<br />
         击败二叔、二婶、嘉姐、万总等怪物<br />
-        升级武器，挑战五关！<br />
+        升级武器，挑战十关！<br />
         <br />
-        💡 提示：只会被怪物攻击致死哦~
+        ⚔️ 初始武器已有剑气效果！
       </p>
       <button class="btn" onclick="startGame()">开始冒险</button>
     </div>
@@ -399,18 +402,18 @@
       let comboCount = 0,
         comboTimer = 0
 
-        // 武器配置 - 10个等级
+        // 武器配置 - 10个等级，都有剑气效果
       const weaponConfigs = {
-        1: { name: '🗡️ 木剑', color: 0x8b4513, damage: 25, range: 3, glow: 0, effect: null },
-        2: { name: '⚔️ 铁剑', color: 0x708090, damage: 32, range: 3.2, glow: 0.1, effect: null },
-        3: { name: '🔥 火焰剑', color: 0xff4400, damage: 42, range: 3.5, glow: 0.3, effect: 'fire' },
-        4: { name: '⚡ 闪电剑', color: 0x00aaff, damage: 55, range: 3.8, glow: 0.4, effect: 'lightning' },
-        5: { name: '❄️ 寒冰剑', color: 0x00ffff, damage: 70, range: 4, glow: 0.5, effect: 'ice' },
-        6: { name: '🌿 毒藤剑', color: 0x00ff00, damage: 88, range: 4.2, glow: 0.6, effect: 'poison' },
-        7: { name: '💎 水晶剑', color: 0xff00ff, damage: 110, range: 4.5, glow: 0.7, effect: 'crystal' },
-        8: { name: '🌟 星辰剑', color: 0xffff00, damage: 135, range: 4.8, glow: 0.8, effect: 'star' },
-        9: { name: '💀 暗黑剑', color: 0x660066, damage: 165, range: 5, glow: 0.9, effect: 'dark' },
-        10: { name: '👑 传说圣剑', color: 0xffd700, damage: 200, range: 5.5, glow: 1.0, effect: 'holy' },
+        1: { name: '⚔️ 星光剑', color: 0x88ccff, damage: 30, range: 4, glow: 0.3, effect: 'star', trail: true },
+        2: { name: '🔥 烈焰剑', color: 0xff4400, damage: 40, range: 4.2, glow: 0.4, effect: 'fire', trail: true },
+        3: { name: '⚡ 雷霆剑', color: 0x00aaff, damage: 52, range: 4.5, glow: 0.5, effect: 'lightning', trail: true },
+        4: { name: '❄️ 寒冰剑', color: 0x00ffff, damage: 65, range: 4.8, glow: 0.6, effect: 'ice', trail: true },
+        5: { name: '🌿 毒藤剑', color: 0x00ff00, damage: 80, range: 5, glow: 0.7, effect: 'poison', trail: true },
+        6: { name: '💎 水晶剑', color: 0xff00ff, damage: 98, range: 5.2, glow: 0.8, effect: 'crystal', trail: true },
+        7: { name: '🌟 星辰剑', color: 0xffff00, damage: 118, range: 5.5, glow: 0.85, effect: 'star', trail: true },
+        8: { name: '💀 暗黑剑', color: 0x660066, damage: 140, range: 5.8, glow: 0.9, effect: 'dark', trail: true },
+        9: { name: '🌈 彩虹剑', color: 0xff69b4, damage: 170, range: 6, glow: 0.95, effect: 'rainbow', trail: true },
+        10: { name: '👑 传说圣剑', color: 0xffd700, damage: 200, range: 6.5, glow: 1.0, effect: 'holy', trail: true },
       }
 
       // 敌人配置
@@ -548,31 +551,38 @@
         body.castShadow = true
         group.add(body)
 
-        // 头部 - 使用翠翠的图片作为贴图，始终面向玩家
-        const headGeo = new THREE.SphereGeometry(0.35, 16, 16)
+        // 头部 - 使用翠翠的2D图片Sprite，始终面向玩家
         const textureLoader = new THREE.TextureLoader()
-        const headMat = new THREE.MeshStandardMaterial({
-          color: 0xffffff,
-          roughness: 0.5,
-        })
-
-        // 加载翠翠图片
         textureLoader.load(
           './cuicui.jpg',
           (texture) => {
-            texture.encoding = THREE.sRGBEncoding
-            headMat.map = texture
-            headMat.needsUpdate = true
+            const material = new THREE.SpriteMaterial({ map: texture })
+            const head = new THREE.Sprite(material)
+            head.scale.set(0.8, 0.8, 1)
+            head.position.y = 1.4
+            head.name = 'head'
+            group.add(head)
+            // 替换原来的head
+            const oldHead = group.getObjectByName('head')
+            if (oldHead) group.remove(oldHead)
           },
           undefined,
           () => {
-            console.log('使用默认头像')
+            // 加载失败时使用默认头像
+            const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac })
+            const headGeo = new THREE.SphereGeometry(0.35, 16, 16)
+            const head = new THREE.Mesh(headGeo, headMat)
+            head.position.y = 1.4
+            head.name = 'head'
+            group.add(head)
           },
         )
 
+        // 默认头像（等待图片加载）
+        const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac })
+        const headGeo = new THREE.SphereGeometry(0.35, 16, 16)
         const head = new THREE.Mesh(headGeo, headMat)
         head.position.y = 1.4
-        head.castShadow = true
         head.name = 'head'
         group.add(head)
 
@@ -646,15 +656,28 @@
         const config = weaponConfigs[level]
         const group = new THREE.Group()
 
+        // 剑气光效（始终显示）
+        const glowGeo = new THREE.SphereGeometry(0.6, 16, 16)
+        const glowMat = new THREE.MeshBasicMaterial({
+          color: config.color,
+          transparent: true,
+          opacity: 0.3,
+          side: THREE.DoubleSide,
+        })
+        const glow = new THREE.Mesh(glowGeo, glowMat)
+        glow.position.y = 0.8
+        glow.scale.set(1.5, 2, 0.5)
+        group.add(glow)
+
         // 剑柄
-        const handleGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.4, 8)
+        const handleGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.5, 8)
         const handleMat = new THREE.MeshStandardMaterial({ color: 0x4a3728 })
         const handle = new THREE.Mesh(handleGeo, handleMat)
-        handle.position.y = -0.2
+        handle.position.y = -0.25
         group.add(handle)
 
         // 护手
-        const guardGeo = new THREE.BoxGeometry(0.4, 0.08, 0.15)
+        const guardGeo = new THREE.BoxGeometry(0.5, 0.12, 0.2)
         const guardMat = new THREE.MeshStandardMaterial({
           color: config.color,
           emissive: config.color,
@@ -663,9 +686,9 @@
         const guard = new THREE.Mesh(guardGeo, guardMat)
         group.add(guard)
 
-        // 剑身
-        const bladeLength = 1 + level * 0.15
-        const bladeGeo = new THREE.BoxGeometry(0.12, bladeLength, 0.03)
+        // 剑身 - 更大更帅
+        const bladeLength = 1.2 + level * 0.2
+        const bladeGeo = new THREE.BoxGeometry(0.18, bladeLength, 0.04)
         const bladeMat = new THREE.MeshStandardMaterial({
           color: config.color,
           emissive: config.color,
@@ -674,39 +697,45 @@
           roughness: 0.1,
         })
         const blade = new THREE.Mesh(bladeGeo, bladeMat)
-        blade.position.y = bladeLength / 2
+        blade.position.y = bladeLength / 2 + 0.1
         group.add(blade)
 
+        // 剑气轨迹
+        const trailGeo = new THREE.PlaneGeometry(0.3 + level * 0.05, bladeLength * 0.8)
+        const trailMat = new THREE.MeshBasicMaterial({
+          color: config.color,
+          transparent: true,
+          opacity: 0.4 + level * 0.03,
+          side: THREE.DoubleSide,
+        })
+        const trail = new THREE.Mesh(trailGeo, trailMat)
+        trail.position.y = bladeLength / 2 + 0.2
+        trail.position.z = 0.05
+        group.add(trail)
+
         // 特效粒子
-        if (level >= 3) {
-          const particleGeo = new THREE.BufferGeometry()
-          const particleCount = 20
-          const positions = new Float32Array(particleCount * 3)
-          for (let i = 0; i < particleCount * 3; i += 3) {
-            positions[i] = (Math.random() - 0.5) * 0.3
-            positions[i + 1] = Math.random() * bladeLength
-            positions[i + 2] = (Math.random() - 0.5) * 0.1
-          }
-          particleGeo.setAttribute(
-            'position',
-            new THREE.BufferAttribute(positions, 3),
-          )
-          const particleMat = new THREE.PointsMaterial({
-            color: config.color,
-            size: 0.05,
-            transparent: true,
-            opacity: 0.8,
-          })
-          const particles = new THREE.Points(particleGeo, particleMat)
-          group.add(particles)
+        const particleGeo = new THREE.BufferGeometry()
+        const particleCount = 15 + level * 5
+        const positions = new Float32Array(particleCount * 3)
+        for (let i = 0; i < particleCount * 3; i += 3) {
+          positions[i] = (Math.random() - 0.5) * 0.4
+          positions[i + 1] = Math.random() * bladeLength
+          positions[i + 2] = (Math.random() - 0.5) * 0.15
         }
+        particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+        const particleMat = new THREE.PointsMaterial({
+          color: config.color,
+          size: 0.08 + level * 0.01,
+          transparent: true,
+          opacity: 0.9,
+        })
+        const particles = new THREE.Points(particleGeo, particleMat)
+        group.add(particles)
 
         // 光晕
-        if (config.glow > 0) {
-          const light = new THREE.PointLight(config.color, config.glow, 5)
-          light.position.y = bladeLength / 2
-          group.add(light)
-        }
+        const light = new THREE.PointLight(config.color, config.glow, 8 + level)
+        light.position.y = bladeLength / 2
+        group.add(light)
 
         return group
       }
@@ -721,7 +750,7 @@
         })
         platforms = []
 
-        const levelLength = 60 + level * 30
+        const levelLength = 60 + level * 25
         const groundY = 0
 
         // 草原地面
@@ -762,8 +791,8 @@
           }
         }
 
-        // 生成敌人
-        const enemyCount = 6 + level * 2
+        // 生成敌人 - 根据关卡调整数量和强度
+        const enemyCount = 5 + level * 2
         const enemyNames = Object.keys(enemyTypes)
 
         for (let i = 0; i < enemyCount; i++) {
@@ -776,6 +805,8 @@
             ]
           const x = 15 + Math.random() * (levelLength - 30)
           const enemy = createEnemy(name, x, 1, (Math.random() - 0.5) * 8)
+          // 关卡加成
+          enemy.damage = Math.floor(enemy.damage * (1 + level * 0.1))
           enemies.push(enemy)
         }
 
@@ -787,7 +818,8 @@
         scene.add(flagPole)
 
         const flagGeo = new THREE.PlaneGeometry(2, 1.2)
-        const flagColor = [0xff4444, 0x44ff44, 0x4444ff, 0xffff44, 0xff44ff][level - 1] || 0xff4444
+        const flagColors = [0xff4444, 0xff8844, 0xffff44, 0x44ff44, 0x44ffff, 0x4444ff, 0xff44ff, 0xff8888, 0x88ff88, 0xffd700]
+        const flagColor = flagColors[(level - 1) % flagColors.length]
         const flagMat = new THREE.MeshStandardMaterial({
           color: flagColor,
           side: THREE.DoubleSide,
@@ -1000,11 +1032,16 @@
         gameRunning = false
         const texts = [
           '',
-          '恭喜通过第一关！草原还很辽阔...',
-          '干得漂亮！第二关完成！',
-          '太厉害了！第三关完成！',
-          '接近终点了！第四关通过！',
-          '最后一关了！冲啊！',
+          '恭喜通过第一关！',
+          '第二关完成，继续加油！',
+          '太厉害了！第三关通过！',
+          '第四关完成！',
+          '第五关完成！',
+          '第六关完成！',
+          '第七关完成！',
+          '第八关完成！',
+          '第九关完成！',
+          '最后一关，冲啊！',
         ]
         document.getElementById('levelCompleteText').textContent =
           `${texts[currentLevel]}\n分数: ${score} | 击杀: ${kills}`
@@ -1072,13 +1109,7 @@
         if (moveX > 0) player.rotation.y = 0
         if (moveX < 0) player.rotation.y = Math.PI
 
-        // 头部始终面向玩家（朝向玩家方向）
-        if (player.userData.head) {
-          const headTargetY = moveX > 0 ? 0 : moveX < 0 ? Math.PI : player.rotation.y
-          if (moveX !== 0) {
-            player.userData.head.rotation.y += (headTargetY - player.userData.head.rotation.y) * 0.15
-          }
-        }
+        // 头部始终面向玩家（Sprite默认就会面向相机）
 
         // 地面碰撞检测
         let onGround = false
@@ -1103,9 +1134,9 @@
         }
 
         // 终点检测 - 通过旗帜位置
-        const levelLength = 60 + currentLevel * 30
+        const levelLength = 60 + currentLevel * 25
         if (player.position.x >= levelLength - 2) {
-          if (currentLevel >= 5) {
+          if (currentLevel >= 10) {
             victory()
           } else {
             levelComplete()
@@ -1129,13 +1160,19 @@
           }
         }
 
-        // 剑动画
+        // 剑动画 - 攻击时拖尾效果
         if (sword) {
           const baseRot = -Math.PI / 4
           if (isAttacking) {
             const progress = (Date.now() - attackStartTime) / 300
-            sword.rotation.z = baseRot + Math.sin(progress * Math.PI) * 2
-            sword.rotation.x = Math.sin(progress * Math.PI * 2) * 0.5
+            sword.rotation.z = baseRot + Math.sin(progress * Math.PI) * 2.5
+            sword.rotation.x = Math.sin(progress * Math.PI * 2) * 0.8
+            // 攻击时增强发光
+            sword.children.forEach(child => {
+              if (child.material && child.material.opacity !== undefined) {
+                child.material.opacity = Math.min(1, (child.material.opacity || 0) + 0.1)
+              }
+            })
           } else {
             sword.rotation.z += (baseRot - sword.rotation.z) * 0.2
             sword.rotation.x *= 0.8
@@ -1288,7 +1325,7 @@
           player.add(sword)
 
           // 恢复生命
-          playerHealth = Math.min(playerHealth + 25, maxHealth)
+          playerHealth = Math.min(playerHealth + 30, maxHealth)
 
           // 显示升级提示
           showLevelUpText(weaponLevel)
@@ -1317,33 +1354,52 @@
       }
 
       function createUpgradeEffect(pos) {
-        // 武器升级特效 - 彩虹光环
-        const colors = [0xff0000, 0xff8800, 0xffff00, 0x00ff00, 0x00ffff, 0x0000ff, 0xff00ff]
+        // 武器升级特效 - 炫彩光环
+        const colors = [0xff0000, 0xff8800, 0xffff00, 0x00ff00, 0x00ffff, 0x0000ff, 0xff00ff, 0xffd700]
         colors.forEach((color, i) => {
           setTimeout(() => {
-            createExplosion(pos, color, 1.5)
-          }, i * 100)
+            createExplosion(pos, color, 2)
+          }, i * 80)
         })
 
         // 中心光球
-        const sphereGeo = new THREE.SphereGeometry(0.5, 16, 16)
+        const sphereGeo = new THREE.SphereGeometry(0.8, 16, 16)
         const sphereMat = new THREE.MeshBasicMaterial({
           color: weaponConfigs[weaponLevel].color,
           transparent: true,
-          opacity: 0.8,
+          opacity: 0.9,
         })
         const sphere = new THREE.Mesh(sphereGeo, sphereMat)
         sphere.position.copy(pos)
-        sphere.position.y += 1
+        sphere.position.y += 1.5
         scene.add(sphere)
+
+        // 光环
+        const haloGeo = new THREE.RingGeometry(0.5, 1.5, 32)
+        const haloMat = new THREE.MeshBasicMaterial({
+          color: weaponConfigs[weaponLevel].color,
+          transparent: true,
+          opacity: 0.7,
+          side: THREE.DoubleSide,
+        })
+        const halo = new THREE.Mesh(haloGeo, haloMat)
+        halo.position.copy(pos)
+        halo.position.y += 1.5
+        scene.add(halo)
 
         let scale = 1
         const anim = () => {
-          scale += 0.1
+          scale += 0.08
           sphere.scale.set(scale, scale, scale)
-          sphere.material.opacity -= 0.03
+          halo.scale.set(scale * 2, scale * 2, 1)
+          halo.rotation.z += 0.1
+          sphere.material.opacity -= 0.02
+          halo.material.opacity -= 0.02
           if (sphere.material.opacity > 0) requestAnimationFrame(anim)
-          else scene.remove(sphere)
+          else {
+            scene.remove(sphere)
+            scene.remove(halo)
+          }
         }
         anim()
       }
@@ -1482,19 +1538,33 @@
 
       function createSlashEffect(pos, rotation) {
         const config = weaponConfigs[weaponLevel]
-        const slashGeo = new THREE.RingGeometry(1, 1.5, 0, Math.PI)
+        const slashGeo = new THREE.RingGeometry(1.5, 2, 32)
         const slashMat = new THREE.MeshBasicMaterial({
           color: config.color,
           transparent: true,
-          opacity: 0.8,
+          opacity: 0.9,
           side: THREE.DoubleSide,
         })
         const slash = new THREE.Mesh(slashGeo, slashMat)
         slash.position.copy(pos)
-        slash.position.y += 1
+        slash.position.y += 1.2
         slash.rotation.x = -Math.PI / 2
         slash.rotation.z = rotation === 0 ? -Math.PI / 2 : Math.PI / 2
         scene.add(slash)
+
+        // 剑气冲击波
+        const waveGeo = new THREE.RingGeometry(0.5, 1, 32)
+        const waveMat = new THREE.MeshBasicMaterial({
+          color: config.color,
+          transparent: true,
+          opacity: 0.7,
+          side: THREE.DoubleSide,
+        })
+        const wave = new THREE.Mesh(waveGeo, waveMat)
+        wave.position.copy(pos)
+        wave.position.y += 1
+        wave.rotation.x = -Math.PI / 2
+        scene.add(wave)
 
         // 特效类型
         if (config.effect === 'fire') {
@@ -1513,17 +1583,52 @@
           createDarkEffect(pos)
         } else if (config.effect === 'holy') {
           createHolyEffect(pos)
+        } else if (config.effect === 'rainbow') {
+          createRainbowEffect(pos)
         }
 
         let scale = 1
         const anim = () => {
-          scale += 0.3
+          scale += 0.4
           slash.scale.set(scale, scale, scale)
-          slash.material.opacity -= 0.05
+          wave.scale.set(scale * 1.5, scale * 1.5, 1)
+          slash.material.opacity -= 0.04
+          wave.material.opacity -= 0.05
           if (slash.material.opacity > 0) requestAnimationFrame(anim)
-          else scene.remove(slash)
+          else {
+            scene.remove(slash)
+            scene.remove(wave)
+          }
         }
         anim()
+      }
+
+      function createRainbowEffect(pos) {
+        const colors = [0xff0000, 0xff8800, 0xffff00, 0x00ff00, 0x00ffff, 0x0000ff, 0xff00ff]
+        colors.forEach((color, i) => {
+          const ringGeo = new THREE.RingGeometry(0.5 + i * 0.2, 0.6 + i * 0.2, 32)
+          const ringMat = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.6,
+            side: THREE.DoubleSide,
+          })
+          const ring = new THREE.Mesh(ringGeo, ringMat)
+          ring.position.copy(pos)
+          ring.position.y += 1
+          scene.add(ring)
+
+          let scale = 1
+          const anim = () => {
+            scale += 0.2
+            ring.scale.set(scale, scale, scale)
+            ring.material.opacity -= 0.03
+            ring.rotation.z += 0.1
+            if (ring.material.opacity > 0) requestAnimationFrame(anim)
+            else scene.remove(ring)
+          }
+          setTimeout(() => anim(), i * 50)
+        })
       }
 
       function createFireEffect(pos) {
@@ -1746,12 +1851,13 @@
         document.getElementById('score').textContent = score
         document.getElementById('kills').textContent = kills
 
-        const levelNames = ['', '草原清晨', '烈日当空', '夕阳西下', '月色朦胧', '黎明破晓']
+        const levelNames = ['', '草原清晨', '阳光明媚', '午后时光', '夕阳西下', '暮色降临',
+                           '星空夜幕', '午夜静谧', '黎明前奏', '破晓时分', '胜利曙光']
         document.getElementById('levelInfo').textContent =
           `第 ${currentLevel} 关 - ${levelNames[currentLevel]}`
         const config = weaponConfigs[weaponLevel]
         document.getElementById('weaponInfo').innerHTML =
-          `${config.name} Lv.${weaponLevel}<br>伤害: ${config.damage}${config.effect ? ' | ' + config.effect : ''}`
+          `${config.name} Lv.${weaponLevel}<br>伤害: ${config.damage} | ${config.effect || ''}`
       }
 
       // ==================== 事件处理 ====================
