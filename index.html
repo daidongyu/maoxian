@@ -594,40 +594,80 @@
       const enemyTypes = {
         二叔: {
           color: 0x4a5568,
-          health: 60,
-          damage: 10,
-          speed: 0.03,
-          scale: 1.2,
+          health: 100,
+          damage: 15,
+          speed: 0.04,
+          scale: 1.3,
+          special: 'shield', // 护盾技能
         },
         二婶: {
           color: 0xe53e3e,
-          health: 50,
-          damage: 12,
-          speed: 0.04,
-          scale: 1.0,
+          health: 80,
+          damage: 18,
+          speed: 0.05,
+          scale: 1.1,
+          special: 'charge', // 冲锋技能
         },
         嘉姐: {
           color: 0x805ad5,
-          health: 80,
-          damage: 15,
-          speed: 0.05,
-          scale: 1.1,
+          health: 120,
+          damage: 22,
+          speed: 0.06,
+          scale: 1.2,
+          special: 'heal', // 自我治疗
         },
         万总: {
           color: 0x38a169,
-          health: 150,
-          damage: 20,
-          speed: 0.02,
+          health: 250,
+          damage: 30,
+          speed: 0.03,
+          scale: 1.6,
+          special: 'rage', // 狂暴化
+        },
+        // 新增精英敌人
+        铁甲: {
+          color: 0x708090,
+          health: 180,
+          damage: 25,
+          speed: 0.035,
           scale: 1.4,
+          special: 'reflect', // 伤害反射
+        },
+        暗影: {
+          color: 0x2d1b4e,
+          health: 90,
+          damage: 28,
+          speed: 0.08,
+          scale: 0.9,
+          special: 'teleport', // 瞬移
         },
       }
 
       // ==================== 初始化 ====================
       function init() {
-        // 场景 - 柔和草原背景
+        // 场景 - 真实天空渐变效果
         scene = new THREE.Scene()
-        scene.background = new THREE.Color(0x6688aa) // 柔和的灰蓝色天空
-        scene.fog = new THREE.Fog(0x7799aa, 30, 100) // 淡雾
+
+        // 创建天空渐变
+        const canvas = document.createElement('canvas')
+        canvas.width = 2
+        canvas.height = 512
+        const ctx = canvas.getContext('2d')
+        const gradient = ctx.createLinearGradient(0, 0, 0, 512)
+        gradient.addColorStop(0, '#4a90c2')     // 顶部天蓝色
+        gradient.addColorStop(0.3, '#87ceeb')   // 中间浅蓝色
+        gradient.addColorStop(0.6, '#b0e0e6')   // 中下部淡蓝
+        gradient.addColorStop(0.85, '#ffd89b')  // 夕阳金色
+        gradient.addColorStop(1, '#ff9966')     // 地平线橙红
+        ctx.fillStyle = gradient
+        ctx.fillRect(0, 0, 2, 512)
+
+        const skyTexture = new THREE.CanvasTexture(canvas)
+        skyTexture.magFilter = THREE.LinearFilter
+        scene.background = skyTexture
+
+        // 大气层雾效 - 随关卡变化
+        scene.fog = new THREE.FogExp2(0x8899aa, 0.008)
 
         // 相机
         camera = new THREE.PerspectiveCamera(
@@ -648,20 +688,37 @@
         renderer.shadowMap.enabled = true
         renderer.shadowMap.type = THREE.PCFSoftShadowMap
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+        renderer.toneMapping = THREE.ACESFilmicToneMapping
+        renderer.toneMappingExposure = 1.2
 
-        // 灯光 - 柔和的草原阳光效果
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
+        // 真实感灯光设置
+        // 环境光 - 柔和的蓝色调
+        const ambientLight = new THREE.AmbientLight(0x8899bb, 0.4)
         scene.add(ambientLight)
 
-        const dirLight = new THREE.DirectionalLight(0xffffcc, 0.7)
-        dirLight.position.set(10, 20, 10)
-        dirLight.castShadow = true
-        dirLight.shadow.camera.left = -50
-        dirLight.shadow.camera.right = 50
-        dirLight.shadow.camera.top = 50
-        dirLight.shadow.camera.bottom = -50
-        dirLight.shadow.mapSize.width = 2048
-        dirLight.shadow.mapSize.height = 2048
+        // 主光源 - 模拟太阳光
+        const sunLight = new THREE.DirectionalLight(0xffeedd, 1.0)
+        sunLight.position.set(20, 30, 10)
+        sunLight.castShadow = true
+        sunLight.shadow.camera.left = -60
+        sunLight.shadow.camera.right = 60
+        sunLight.shadow.camera.top = 60
+        sunLight.shadow.camera.bottom = -60
+        sunLight.shadow.mapSize.width = 2048
+        sunLight.shadow.mapSize.height = 2048
+        sunLight.shadow.camera.near = 0.5
+        sunLight.shadow.camera.far = 150
+        sunLight.shadow.bias = -0.0001
+        scene.add(sunLight)
+
+        // 补光 - 模拟天空反射
+        const fillLight = new THREE.DirectionalLight(0x88aaff, 0.3)
+        fillLight.position.set(-10, 15, -5)
+        scene.add(fillLight)
+
+        // 地面反射光
+        const groundLight = new THREE.HemisphereLight(0x88ccff, 0x228833, 0.2)
+        scene.add(groundLight)
         scene.add(dirLight)
 
         // 事件监听
@@ -775,59 +832,210 @@
         cape.name = 'cape'
         group.add(cape)
 
-        // 身体
-        const bodyGeo = new THREE.CylinderGeometry(0.4, 0.3, 1.2, 8)
+        // 身体 - 优雅的比例
+        const bodyGeo = new THREE.CylinderGeometry(0.35, 0.28, 1.1, 12)
         const bodyMat = new THREE.MeshStandardMaterial({
-          color: 0x4ade80, // 绿色衣服
+          color: 0x3cb371, // 优雅的翡翠绿
           roughness: 0.3,
-          metalness: 0.2,
+          metalness: 0.4,
         })
         const body = new THREE.Mesh(bodyGeo, bodyMat)
-        body.position.y = 0.6
+        body.position.y = 0.55
         body.castShadow = true
         group.add(body)
 
-        // 手臂
-        const armGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.8, 8)
-        const leftArm = new THREE.Mesh(armGeo, bodyMat)
-        leftArm.position.set(-0.5, 0.8, 0)
-        leftArm.rotation.z = 0.3
-        const rightArm = new THREE.Mesh(armGeo, bodyMat)
-        rightArm.position.set(0.5, 0.8, 0)
-        rightArm.rotation.z = -0.3
-        group.add(leftArm, rightArm)
+        // 身体装饰腰带
+        const beltGeo = new THREE.TorusGeometry(0.32, 0.05, 8, 16)
+        const beltMat = new THREE.MeshStandardMaterial({
+          color: 0xffd700,
+          roughness: 0.2,
+          metalness: 0.8,
+          emissive: 0xffd700,
+          emissiveIntensity: 0.3,
+        })
+        const belt = new THREE.Mesh(beltGeo, beltMat)
+        belt.position.y = 0.55
+        belt.rotation.x = Math.PI / 2
+        group.add(belt)
 
-        // 腿
-        const legGeo = new THREE.CylinderGeometry(0.12, 0.1, 0.8, 8)
-        const leftLeg = new THREE.Mesh(
-          legGeo,
-          new THREE.MeshStandardMaterial({ color: 0x2c3e50 }),
+        // 腰带扣
+        const buckleGeo = new THREE.BoxGeometry(0.12, 0.1, 0.05)
+        const buckleMat = new THREE.MeshStandardMaterial({
+          color: 0xffd700,
+          roughness: 0.1,
+          metalness: 0.9,
+        })
+        const buckle = new THREE.Mesh(buckleGeo, buckleMat)
+        buckle.position.set(0, 0.55, 0.32)
+        group.add(buckle)
+
+        // 手臂 - 更优雅的造型
+        const armGeo = new THREE.CylinderGeometry(0.08, 0.06, 0.75, 10)
+        const armMat = new THREE.MeshStandardMaterial({
+          color: 0x3cb371,
+          roughness: 0.3,
+          metalness: 0.4,
+        })
+
+        // 左臂
+        const leftArm = new THREE.Group()
+        const leftUpperArm = new THREE.Mesh(armGeo, armMat)
+        leftUpperArm.position.y = -0.375
+        leftArm.add(leftUpperArm)
+
+        // 左前臂
+        const leftForearm = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.06, 0.05, 0.5, 8),
+          armMat
         )
-        leftLeg.position.set(-0.2, 0, 0)
-        const rightLeg = new THREE.Mesh(
-          legGeo,
-          new THREE.MeshStandardMaterial({ color: 0x2c3e50 }),
+        leftForearm.position.y = -0.85
+        leftArm.add(leftForearm)
+
+        // 左手
+        const leftHand = new THREE.Mesh(
+          new THREE.SphereGeometry(0.06, 8, 8),
+          new THREE.MeshStandardMaterial({ color: 0xffdd00, roughness: 0.5 })
         )
-        rightLeg.position.set(0.2, 0, 0)
-        group.add(leftLeg, rightLeg)
+        leftHand.position.y = -1.15
+        leftArm.add(leftHand)
+
+        leftArm.position.set(-0.42, 0.85, 0)
+        leftArm.rotation.z = 0.35
+        group.add(leftArm)
+
+        // 右臂 - 握剑的手臂
+        const rightArm = new THREE.Group()
+        const rightUpperArm = new THREE.Mesh(armGeo, armMat)
+        rightUpperArm.position.y = -0.375
+        rightArm.add(rightUpperArm)
+
+        const rightForearm = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.06, 0.05, 0.5, 8),
+          armMat
+        )
+        rightForearm.position.y = -0.85
+        rightArm.add(rightForearm)
+
+        const rightHand = new THREE.Mesh(
+          new THREE.SphereGeometry(0.06, 8, 8),
+          new THREE.MeshStandardMaterial({ color: 0xffdd00, roughness: 0.5 })
+        )
+        rightHand.position.y = -1.15
+        rightArm.add(rightHand)
+
+        rightArm.position.set(0.42, 0.85, 0)
+        rightArm.rotation.z = -0.25
+        group.add(rightArm)
+
+        // 腿 - 更优雅的修长设计
+        const legGeo = new THREE.CylinderGeometry(0.1, 0.08, 0.85, 10)
+        const legMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50 })
+
+        const leftLeg = new THREE.Group()
+        const leftThigh = new THREE.Mesh(legGeo, legMat)
+        leftThigh.position.y = -0.425
+        leftLeg.add(leftThigh)
+
+        const leftCalf = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.08, 0.06, 0.6, 8),
+          legMat
+        )
+        leftCalf.position.y = -0.95
+        leftLeg.add(leftCalf)
+
+        const leftFoot = new THREE.Mesh(
+          new THREE.BoxGeometry(0.15, 0.08, 0.25),
+          legMat
+        )
+        leftFoot.position.set(0, -1.35, 0.05)
+        leftLeg.add(leftFoot)
+
+        leftLeg.position.set(-0.18, 0.05, 0)
+        group.add(leftLeg)
+
+        const rightLeg = new THREE.Group()
+        const rightThigh = new THREE.Mesh(legGeo, legMat)
+        rightThigh.position.y = -0.425
+        rightLeg.add(rightThigh)
+
+        const rightCalf = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.08, 0.06, 0.6, 8),
+          legMat
+        )
+        rightCalf.position.y = -0.95
+        rightLeg.add(rightCalf)
+
+        const rightFoot = new THREE.Mesh(
+          new THREE.BoxGeometry(0.15, 0.08, 0.25),
+          legMat
+        )
+        rightFoot.position.set(0, -1.35, 0.05)
+        rightLeg.add(rightFoot)
+
+        rightLeg.position.set(0.18, 0.05, 0)
+        group.add(rightLeg)
+
+        // 颈部装饰
+        const neckGeo = new THREE.TorusGeometry(0.08, 0.02, 8, 16)
+        const neckMat = new THREE.MeshStandardMaterial({
+          color: 0xffd700,
+          roughness: 0.2,
+          metalness: 0.8,
+        })
+        const neck = new THREE.Mesh(neckGeo, neckMat)
+        neck.position.y = 1.0
+        neck.rotation.x = Math.PI / 2
+        group.add(neck)
+
+        // 背部装饰 - 肩甲
+        const shoulderPadGeo = new THREE.SphereGeometry(0.12, 12, 12)
+        const shoulderMat = new THREE.MeshStandardMaterial({
+          color: 0x228b22,
+          roughness: 0.3,
+          metalness: 0.5,
+        })
+
+        const leftShoulder = new THREE.Mesh(shoulderPadGeo, shoulderMat)
+        leftShoulder.position.set(-0.38, 0.95, 0)
+        leftShoulder.scale.set(1.2, 0.7, 1)
+        group.add(leftShoulder)
+
+        const rightShoulder = new THREE.Mesh(shoulderPadGeo, shoulderMat)
+        rightShoulder.position.set(0.38, 0.95, 0)
+        rightShoulder.scale.set(1.2, 0.7, 1)
+        group.add(rightShoulder)
 
         // 创建剑
         sword = createSword(weaponLevel)
-        sword.position.set(0.6, 0.8, 0.5)
-        sword.rotation.z = -Math.PI / 4
+        sword.position.set(0.65, 0.4, 0.3)
+        sword.rotation.z = -Math.PI / 3
         group.add(sword)
 
         // 发光效果
-        const glowGeo = new THREE.SphereGeometry(1.5, 16, 16)
+        const glowGeo = new THREE.SphereGeometry(1.8, 16, 16)
         const glowMat = new THREE.MeshBasicMaterial({
           color: weaponConfigs[weaponLevel].color,
           transparent: true,
-          opacity: 0.1,
+          opacity: 0.08,
         })
         const glow = new THREE.Mesh(glowGeo, glowMat)
-        glow.position.y = 0.8
+        glow.position.y = 0.6
         glow.name = 'glow'
         group.add(glow)
+
+        // 脚底光环
+        const footGlowGeo = new THREE.RingGeometry(0.3, 0.6, 16)
+        const footGlowMat = new THREE.MeshBasicMaterial({
+          color: 0x88ccff,
+          transparent: true,
+          opacity: 0.4,
+          side: THREE.DoubleSide,
+        })
+        const footGlow = new THREE.Mesh(footGlowGeo, footGlowMat)
+        footGlow.rotation.x = -Math.PI / 2
+        footGlow.position.y = -1.4
+        footGlow.name = 'footGlow'
+        group.add(footGlow)
 
         group.position.set(0, 1, 0)
         scene.add(group)
@@ -842,6 +1050,9 @@
           head,
           glow,
           cape,
+          footGlow,
+          capeWaveTime: 0,
+          breatheTime: 0,
         }
       }
 
@@ -849,193 +1060,388 @@
         const config = weaponConfigs[level]
         const group = new THREE.Group()
 
-        // ===== 波动的发光阴影剑气效果 =====
-        // 阴影基底 - 波动的椭圆阴影
-        const shadowGeo = new THREE.CircleGeometry(0.8 + level * 0.1, 32)
-        const shadowMat = new THREE.MeshBasicMaterial({
-          color: config.color,
-          transparent: true,
-          opacity: 0.25,
-          side: THREE.DoubleSide,
-        })
-        const shadow = new THREE.Mesh(shadowGeo, shadowMat)
-        shadow.rotation.x = -Math.PI / 2
-        shadow.position.y = 0.1
-        shadow.name = 'shadow'
-        group.add(shadow)
+        // ===== 真实剑的基础结构 =====
 
-        // 内层波动光环
-        const innerGlowGeo = new THREE.RingGeometry(0.3, 0.6 + level * 0.05, 32)
-        const innerGlowMat = new THREE.MeshBasicMaterial({
-          color: config.color,
-          transparent: true,
-          opacity: 0.4,
-          side: THREE.DoubleSide,
-        })
-        const innerGlow = new THREE.Mesh(innerGlowGeo, innerGlowMat)
-        innerGlow.rotation.x = -Math.PI / 2
-        innerGlow.position.y = 0.05
-        innerGlow.name = 'innerGlow'
-        group.add(innerGlow)
+        // 剑身 - 更加真实的渐变剑刃
+        const bladeLength = 1.2 + level * 0.2
+        const bladeGroup = new THREE.Group()
 
-        // 外层波动光环
-        const outerGlowGeo = new THREE.RingGeometry(0.5 + level * 0.08, 1.0 + level * 0.1, 32)
-        const outerGlowMat = new THREE.MeshBasicMaterial({
-          color: config.color,
-          transparent: true,
-          opacity: 0.2,
-          side: THREE.DoubleSide,
-        })
-        const outerGlow = new THREE.Mesh(outerGlowGeo, outerGlowMat)
-        outerGlow.rotation.x = -Math.PI / 2
-        outerGlow.position.y = 0.02
-        outerGlow.name = 'outerGlow'
-        group.add(outerGlow)
-
-        // 最外层淡淡光环
-        const farGlowGeo = new THREE.RingGeometry(0.8 + level * 0.12, 1.3 + level * 0.15, 32)
-        const farGlowMat = new THREE.MeshBasicMaterial({
-          color: config.color,
-          transparent: true,
-          opacity: 0.1,
-          side: THREE.DoubleSide,
-        })
-        const farGlow = new THREE.Mesh(farGlowGeo, farGlowMat)
-        farGlow.rotation.x = -Math.PI / 2
-        farGlow.position.y = 0.01
-        farGlow.name = 'farGlow'
-        group.add(farGlow)
-
-        // 波动发光球体 - 剑身上方的发光阴影
-        const waveGeo = new THREE.SphereGeometry(0.4 + level * 0.05, 16, 16)
-        const waveMat = new THREE.MeshBasicMaterial({
-          color: config.color,
-          transparent: true,
-          opacity: 0.15,
-        })
-        const wave = new THREE.Mesh(waveGeo, waveMat)
-        wave.position.y = 1.2
-        wave.scale.set(1, 0.6, 1)
-        wave.name = 'wave'
-        group.add(wave)
-
-        // 波动条纹效果
-        const stripeCount = 3
-        for (let i = 0; i < stripeCount; i++) {
-          const stripeGeo = new THREE.RingGeometry(0.2 + i * 0.15, 0.25 + i * 0.15, 32)
-          const stripeMat = new THREE.MeshBasicMaterial({
-            color: config.color,
-            transparent: true,
-            opacity: 0.12 - i * 0.03,
-            side: THREE.DoubleSide,
-          })
-          const stripe = new THREE.Mesh(stripeGeo, stripeMat)
-          stripe.rotation.x = -Math.PI / 2
-          stripe.position.y = 0.5 + i * 0.2
-          stripe.name = 'stripe' + i
-          group.add(stripe)
-        }
-
-        // 剑柄
-        const handleGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.5, 8)
-        const handleMat = new THREE.MeshStandardMaterial({ color: 0x4a3728 })
-        const handle = new THREE.Mesh(handleGeo, handleMat)
-        handle.position.y = -0.25
-        group.add(handle)
-
-        // 护手
-        const guardGeo = new THREE.BoxGeometry(0.5, 0.12, 0.2)
-        const guardMat = new THREE.MeshStandardMaterial({
+        // 主剑身 - 使用多段渐变效果
+        const bladeMainGeo = new THREE.BoxGeometry(0.12, bladeLength * 0.7, 0.02)
+        const bladeMainMat = new THREE.MeshStandardMaterial({
           color: config.color,
           emissive: config.color,
-          emissiveIntensity: config.glow,
+          emissiveIntensity: config.glow * 0.6,
+          metalness: 0.95,
+          roughness: 0.05,
         })
-        const guard = new THREE.Mesh(guardGeo, guardMat)
-        group.add(guard)
+        const bladeMain = new THREE.Mesh(bladeMainGeo, bladeMainMat)
+        bladeMain.position.y = bladeLength * 0.35 + 0.1
+        bladeGroup.add(bladeMain)
 
-        // 剑身 - 发光效果
-        const bladeLength = 1.2 + level * 0.2
-        const bladeGeo = new THREE.BoxGeometry(0.18, bladeLength, 0.04)
-        const bladeMat = new THREE.MeshStandardMaterial({
-          color: config.color,
+        // 剑身前段 - 逐渐变细
+        const bladeTipGeo = new THREE.ConeGeometry(0.06, bladeLength * 0.4, 4)
+        const bladeTipMat = new THREE.MeshStandardMaterial({
+          color: 0xffffff,
           emissive: config.color,
           emissiveIntensity: config.glow,
           metalness: 0.9,
           roughness: 0.1,
         })
-        const blade = new THREE.Mesh(bladeGeo, bladeMat)
-        blade.position.y = bladeLength / 2 + 0.1
-        group.add(blade)
+        const bladeTip = new THREE.Mesh(bladeTipGeo, bladeTipMat)
+        bladeTip.position.y = bladeLength * 0.7 + 0.05
+        bladeTip.rotation.z = Math.PI / 2
+        bladeGroup.add(bladeTip)
 
-        // 剑身上方的小波动光环
-        const tipGlowGeo = new THREE.SphereGeometry(0.15 + level * 0.02, 12, 12)
+        // 剑脊装饰线
+        const ridgeGeo = new THREE.BoxGeometry(0.02, bladeLength * 0.85, 0.01)
+        const ridgeMat = new THREE.MeshStandardMaterial({
+          color: 0xaaccff,
+          emissive: config.color,
+          emissiveIntensity: config.glow * 0.3,
+          metalness: 1,
+          roughness: 0.2,
+        })
+        const ridge = new THREE.Mesh(ridgeGeo, ridgeMat)
+        ridge.position.set(0, bladeLength * 0.42 + 0.1, 0.015)
+        bladeGroup.add(ridge)
+
+        // 血槽设计
+        const fullerGeo = new THREE.BoxGeometry(0.04, bladeLength * 0.5, 0.025)
+        const fullerMat = new THREE.MeshStandardMaterial({
+          color: config.color,
+          emissive: config.color,
+          emissiveIntensity: config.glow * 0.4,
+          transparent: true,
+          opacity: 0.6,
+        })
+        const fuller = new THREE.Mesh(fullerGeo, fullerMat)
+        fuller.position.set(0, bladeLength * 0.35 + 0.15, -0.005)
+        bladeGroup.add(fuller)
+
+        // 剑刃边缘发光
+        const edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(0.13, bladeLength * 0.7, 0.03))
+        const edgeMat = new THREE.LineBasicMaterial({
+          color: config.color,
+          transparent: true,
+          opacity: 0.8,
+        })
+        const edgeLine = new THREE.LineSegments(edgeGeo, edgeMat)
+        edgeLine.position.y = bladeLength * 0.35 + 0.1
+        bladeGroup.add(edgeLine)
+
+        bladeGroup.add(bladeMain, bladeTip, ridge, fuller, edgeLine)
+
+        // 剑身前部发光光晕
+        const bladeGlowGeo = new THREE.SphereGeometry(0.2 + level * 0.03, 16, 16)
+        const bladeGlowMat = new THREE.MeshBasicMaterial({
+          color: config.color,
+          transparent: true,
+          opacity: 0.15,
+        })
+        const bladeGlow = new THREE.Mesh(bladeGlowGeo, bladeGlowMat)
+        bladeGlow.position.y = bladeLength * 0.5 + 0.1
+        bladeGlow.scale.set(1, 1.5, 0.5)
+        bladeGlow.name = 'bladeGlow'
+        bladeGroup.add(bladeGlow)
+
+        group.add(bladeGroup)
+
+        // ===== 十字护手 - 更精细的设计 =====
+        const guardGroup = new THREE.Group()
+
+        // 主护手 - 弧形设计
+        const guardShape = new THREE.Shape()
+        guardShape.moveTo(-0.35, -0.04)
+        guardShape.lineTo(-0.3, 0.04)
+        guardShape.lineTo(0.3, 0.04)
+        guardShape.lineTo(0.35, -0.04)
+        guardShape.lineTo(0.3, -0.08)
+        guardShape.lineTo(-0.3, -0.08)
+        guardShape.closePath()
+
+        const guardGeo = new THREE.ExtrudeGeometry(guardShape, {
+          depth: 0.08,
+          bevelEnabled: true,
+          bevelThickness: 0.02,
+          bevelSize: 0.02,
+          bevelSegments: 3,
+        })
+        const guardMat = new THREE.MeshStandardMaterial({
+          color: 0xc9a227,
+          emissive: config.color,
+          emissiveIntensity: config.glow * 0.4,
+          metalness: 0.85,
+          roughness: 0.2,
+        })
+        const guard = new THREE.Mesh(guardGeo, guardMat)
+        guard.position.set(-0.25, -0.04, -0.04)
+        guard.rotation.x = 0
+        guardGroup.add(guard)
+
+        // 护手装饰球
+        const guardOrbGeo = new THREE.SphereGeometry(0.045, 12, 12)
+        const guardOrbMat = new THREE.MeshStandardMaterial({
+          color: config.color,
+          emissive: config.color,
+          emissiveIntensity: config.glow * 0.6,
+          metalness: 0.7,
+          roughness: 0.3,
+        })
+
+        const leftOrb = new THREE.Mesh(guardOrbGeo, guardOrbMat)
+        leftOrb.position.set(-0.35, 0, 0)
+        guardGroup.add(leftOrb)
+
+        const rightOrb = new THREE.Mesh(guardOrbGeo, guardOrbMat)
+        rightOrb.position.set(0.35, 0, 0)
+        guardGroup.add(rightOrb)
+
+        // 护手中心宝石
+        const centerGemGeo = new THREE.OctahedronGeometry(0.06, 0)
+        const centerGemMat = new THREE.MeshStandardMaterial({
+          color: config.color,
+          emissive: config.color,
+          emissiveIntensity: config.glow,
+          metalness: 0.5,
+          roughness: 0.1,
+          transparent: true,
+          opacity: 0.9,
+        })
+        const centerGem = new THREE.Mesh(centerGemGeo, centerGemMat)
+        centerGem.position.set(0, 0, 0.06)
+        centerGem.name = 'centerGem'
+        guardGroup.add(centerGem)
+
+        guardGroup.position.y = -0.05
+        group.add(guardGroup)
+
+        // ===== 剑柄 - 缠绕设计 =====
+        const handleGroup = new THREE.Group()
+
+        // 柄芯
+        const handleCoreGeo = new THREE.CylinderGeometry(0.06, 0.055, 0.55, 12)
+        const handleCoreMat = new THREE.MeshStandardMaterial({
+          color: 0x3d2817,
+          roughness: 0.7,
+          metalness: 0.2,
+        })
+        const handleCore = new THREE.Mesh(handleCoreGeo, handleCoreMat)
+        handleGroup.add(handleCore)
+
+        // 缠绕线
+        const wrapCount = 8
+        for (let i = 0; i < wrapCount; i++) {
+          const wrapGeo = new THREE.TorusGeometry(0.065, 0.012, 6, 16)
+          const wrapMat = new THREE.MeshStandardMaterial({
+            color: 0x2a1a0a,
+            roughness: 0.8,
+          })
+          const wrap = new THREE.Mesh(wrapGeo, wrapMat)
+          wrap.position.y = -0.2 + (i * 0.5) / wrapCount
+          wrap.rotation.x = Math.PI / 2
+          handleGroup.add(wrap)
+        }
+
+        // 柄尾
+        const pommelGeo = new THREE.SphereGeometry(0.07, 12, 12)
+        const pommelMat = new THREE.MeshStandardMaterial({
+          color: 0xc9a227,
+          emissive: config.color,
+          emissiveIntensity: config.glow * 0.3,
+          metalness: 0.85,
+          roughness: 0.15,
+        })
+        const pommel = new THREE.Mesh(pommelGeo, pommelMat)
+        pommel.position.y = -0.28
+        handleGroup.add(pommel)
+
+        // 柄尾装饰
+        const pommelGemGeo = new THREE.OctahedronGeometry(0.03, 0)
+        const pommelGemMat = new THREE.MeshStandardMaterial({
+          color: config.color,
+          emissive: config.color,
+          emissiveIntensity: config.glow,
+        })
+        const pommelGem = new THREE.Mesh(pommelGemGeo, pommelGemMat)
+        pommelGem.position.y = -0.28
+        pommelGem.name = 'pommelGem'
+        handleGroup.add(pommelGem)
+
+        handleGroup.position.y = -0.35
+        group.add(handleGroup)
+
+        // ===== 剑尖能量特效 =====
+        const tipEnergyGeo = new THREE.ConeGeometry(0.08 + level * 0.01, 0.25, 8)
+        const tipEnergyMat = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.6,
+        })
+        const tipEnergy = new THREE.Mesh(tipEnergyGeo, tipEnergyMat)
+        tipEnergy.position.y = bladeLength + 0.3
+        tipEnergy.rotation.z = -Math.PI / 2
+        tipEnergy.name = 'tipEnergy'
+        group.add(tipEnergy)
+
+        // 剑尖光球
+        const tipGlowGeo = new THREE.SphereGeometry(0.12 + level * 0.02, 16, 16)
         const tipGlowMat = new THREE.MeshBasicMaterial({
           color: config.color,
           transparent: true,
-          opacity: 0.5,
+          opacity: 0.7,
         })
         const tipGlow = new THREE.Mesh(tipGlowGeo, tipGlowMat)
-        tipGlow.position.y = bladeLength + 0.2
+        tipGlow.position.y = bladeLength + 0.25
         tipGlow.name = 'tipGlow'
         group.add(tipGlow)
 
-        // 特效粒子 - 围绕剑身的波动粒子
+        // ===== 波动光环效果 =====
+        // 阴影基底
+        const shadowGeo = new THREE.CircleGeometry(0.8 + level * 0.1, 32)
+        const shadowMat = new THREE.MeshBasicMaterial({
+          color: config.color,
+          transparent: true,
+          opacity: 0.2,
+          side: THREE.DoubleSide,
+        })
+        const shadow = new THREE.Mesh(shadowGeo, shadowMat)
+        shadow.rotation.x = -Math.PI / 2
+        shadow.position.y = 0.15
+        shadow.name = 'shadow'
+        group.add(shadow)
+
+        // 内层光环
+        const innerGlowGeo = new THREE.RingGeometry(0.3, 0.6 + level * 0.05, 32)
+        const innerGlowMat = new THREE.MeshBasicMaterial({
+          color: config.color,
+          transparent: true,
+          opacity: 0.35,
+          side: THREE.DoubleSide,
+        })
+        const innerGlow = new THREE.Mesh(innerGlowGeo, innerGlowMat)
+        innerGlow.rotation.x = -Math.PI / 2
+        innerGlow.position.y = 0.1
+        innerGlow.name = 'innerGlow'
+        group.add(innerGlow)
+
+        // 外层光环
+        const outerGlowGeo = new THREE.RingGeometry(0.5 + level * 0.08, 1.0 + level * 0.1, 32)
+        const outerGlowMat = new THREE.MeshBasicMaterial({
+          color: config.color,
+          transparent: true,
+          opacity: 0.15,
+          side: THREE.DoubleSide,
+        })
+        const outerGlow = new THREE.Mesh(outerGlowGeo, outerGlowMat)
+        outerGlow.rotation.x = -Math.PI / 2
+        outerGlow.position.y = 0.05
+        outerGlow.name = 'outerGlow'
+        group.add(outerGlow)
+
+        // 最外层光环
+        const farGlowGeo = new THREE.RingGeometry(0.8 + level * 0.12, 1.3 + level * 0.15, 32)
+        const farGlowMat = new THREE.MeshBasicMaterial({
+          color: config.color,
+          transparent: true,
+          opacity: 0.08,
+          side: THREE.DoubleSide,
+        })
+        const farGlow = new THREE.Mesh(farGlowGeo, farGlowMat)
+        farGlow.rotation.x = -Math.PI / 2
+        farGlow.position.y = 0.02
+        farGlow.name = 'farGlow'
+        group.add(farGlow)
+
+        // 剑身上方能量云
+        const waveGeo = new THREE.SphereGeometry(0.35 + level * 0.05, 16, 16)
+        const waveMat = new THREE.MeshBasicMaterial({
+          color: config.color,
+          transparent: true,
+          opacity: 0.12,
+        })
+        const wave = new THREE.Mesh(waveGeo, waveMat)
+        wave.position.y = bladeLength * 0.6 + 0.15
+        wave.scale.set(1, 0.5, 0.4)
+        wave.name = 'wave'
+        group.add(wave)
+
+        // 能量条纹
+        for (let i = 0; i < 3; i++) {
+          const stripeGeo = new THREE.RingGeometry(0.15 + i * 0.12, 0.2 + i * 0.12, 32)
+          const stripeMat = new THREE.MeshBasicMaterial({
+            color: config.color,
+            transparent: true,
+            opacity: 0.1 - i * 0.025,
+            side: THREE.DoubleSide,
+          })
+          const stripe = new THREE.Mesh(stripeGeo, stripeMat)
+          stripe.rotation.x = -Math.PI / 2
+          stripe.position.y = 0.4 + i * 0.15
+          stripe.name = 'stripe' + i
+          group.add(stripe)
+        }
+
+        // ===== 特效粒子 =====
+        // 剑身周围粒子
         const particleGeo = new THREE.BufferGeometry()
-        const particleCount = 15 + level * 5
+        const particleCount = 20 + level * 5
         const positions = new Float32Array(particleCount * 3)
         for (let i = 0; i < particleCount * 3; i += 3) {
-          const angle = (i / 3) * (Math.PI * 2 / particleCount)
-          const radius = 0.3 + Math.random() * 0.4
+          const angle = (i / 3) * (Math.PI * 2 / particleCount) + Math.random() * 0.3
+          const radius = 0.15 + Math.random() * 0.25
           positions[i] = Math.cos(angle) * radius
-          positions[i + 1] = Math.random() * (bladeLength + 0.5) + 0.2
+          positions[i + 1] = Math.random() * (bladeLength + 0.8) + 0.2
           positions[i + 2] = Math.sin(angle) * radius * 0.3
         }
-        particleGeo.setAttribute(
-          'position',
-          new THREE.BufferAttribute(positions, 3),
-        )
+        particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
         const particleMat = new THREE.PointsMaterial({
           color: config.color,
-          size: 0.08 + level * 0.01,
+          size: 0.06 + level * 0.01,
           transparent: true,
-          opacity: 0.5,
+          opacity: 0.6,
         })
         const particles = new THREE.Points(particleGeo, particleMat)
+        particles.name = 'particles'
         group.add(particles)
 
-        // 剑身周围的波动光环粒子
+        // 环绕光环粒子
         const ringParticleGeo = new THREE.BufferGeometry()
-        const ringParticleCount = 20 + level * 3
+        const ringParticleCount = 25 + level * 3
         const ringPositions = new Float32Array(ringParticleCount * 3)
         for (let i = 0; i < ringParticleCount * 3; i += 3) {
           const angle = (i / 3) * (Math.PI * 2 / ringParticleCount)
-          const radius = 0.6 + level * 0.08
+          const radius = 0.5 + level * 0.06
           ringPositions[i] = Math.cos(angle) * radius
-          ringPositions[i + 1] = 0.3 + Math.random() * 0.3
+          ringPositions[i + 1] = 0.25 + Math.random() * 0.25
           ringPositions[i + 2] = Math.sin(angle) * radius
         }
-        ringParticleGeo.setAttribute(
-          'position',
-          new THREE.BufferAttribute(ringPositions, 3),
-        )
+        ringParticleGeo.setAttribute('position', new THREE.BufferAttribute(ringPositions, 3))
         const ringParticleMat = new THREE.PointsMaterial({
           color: config.color,
-          size: 0.05 + level * 0.008,
+          size: 0.04 + level * 0.006,
           transparent: true,
-          opacity: 0.35,
+          opacity: 0.4,
         })
         const ringParticles = new THREE.Points(ringParticleGeo, ringParticleMat)
         ringParticles.name = 'ringParticles'
         group.add(ringParticles)
 
-        // 发光点光源
-        const light = new THREE.PointLight(config.color, config.glow * 0.5, 5 + level)
-        light.position.y = 0.5
-        group.add(light)
+        // ===== 动态光照 =====
+        // 主光源
+        const mainLight = new THREE.PointLight(config.color, config.glow * 0.6, 6 + level)
+        mainLight.position.y = bladeLength * 0.5
+        mainLight.name = 'mainLight'
+        group.add(mainLight)
 
-        // 阴影点光源
-        const shadowLight = new THREE.PointLight(config.color, config.glow * 0.25, 3 + level)
-        shadowLight.position.y = 0.05
+        // 剑尖聚光灯
+        const tipLight = new THREE.PointLight(0xffffff, config.glow * 0.4, 3)
+        tipLight.position.y = bladeLength + 0.3
+        group.add(tipLight)
+
+        // 底部阴影光
+        const shadowLight = new THREE.PointLight(config.color, config.glow * 0.2, 3 + level)
+        shadowLight.position.y = 0.08
         group.add(shadowLight)
 
         return group
@@ -1046,12 +1452,43 @@
         if (!sword) return
         const config = weaponConfigs[weaponLevel]
 
+        // 更新剑身光晕
+        const bladeGlow = sword.getObjectByName('bladeGlow')
+        if (bladeGlow) {
+          const pulse = 1 + Math.sin(time * 4) * 0.2
+          bladeGlow.material.opacity = 0.12 + Math.sin(time * 5) * 0.05
+          bladeGlow.scale.x = pulse
+          bladeGlow.scale.y = 1.5 * pulse
+        }
+
+        // 更新护手中心宝石
+        const centerGem = sword.getObjectByName('centerGem')
+        if (centerGem) {
+          centerGem.rotation.y += 0.05
+          centerGem.rotation.x += 0.03
+          centerGem.material.opacity = 0.85 + Math.sin(time * 6) * 0.15
+        }
+
+        // 更新柄尾宝石
+        const pommelGem = sword.getObjectByName('pommelGem')
+        if (pommelGem) {
+          pommelGem.rotation.x += 0.04
+          pommelGem.rotation.z += 0.03
+        }
+
+        // 更新剑尖能量
+        const tipEnergy = sword.getObjectByName('tipEnergy')
+        if (tipEnergy) {
+          tipEnergy.material.opacity = 0.5 + Math.sin(time * 8) * 0.3
+          tipEnergy.scale.x = 1 + Math.sin(time * 6) * 0.3
+        }
+
         // 更新阴影波动
         const shadow = sword.getObjectByName('shadow')
         if (shadow) {
           const scale = 1 + Math.sin(time * 3) * 0.1
           shadow.scale.set(scale, scale, 1)
-          shadow.material.opacity = 0.3 + Math.sin(time * 4) * 0.1
+          shadow.material.opacity = 0.25 + Math.sin(time * 4) * 0.08
         }
 
         // 更新内层光环波动
@@ -1059,7 +1496,7 @@
         if (innerGlow) {
           const scale = 1 + Math.sin(time * 5) * 0.15
           innerGlow.scale.set(scale, scale, 1)
-          innerGlow.material.opacity = 0.5 + Math.sin(time * 6) * 0.15
+          innerGlow.material.opacity = 0.4 + Math.sin(time * 6) * 0.12
         }
 
         // 更新外层光环波动
@@ -1067,8 +1504,8 @@
         if (outerGlow) {
           const scale = 1 + Math.sin(time * 2.5 + 1) * 0.2
           outerGlow.scale.set(scale, scale, 1)
-          outerGlow.rotation.z += 0.02
-          outerGlow.material.opacity = 0.2 + Math.sin(time * 3.5) * 0.1
+          outerGlow.rotation.z += 0.025
+          outerGlow.material.opacity = 0.18 + Math.sin(time * 3.5) * 0.08
         }
 
         // 更新最外层光环
@@ -1076,17 +1513,17 @@
         if (farGlow) {
           const scale = 1 + Math.sin(time * 2 + 2) * 0.25
           farGlow.scale.set(scale, scale, 1)
-          farGlow.rotation.z -= 0.015
-          farGlow.material.opacity = 0.1 + Math.sin(time * 2.5) * 0.05
+          farGlow.rotation.z -= 0.018
+          farGlow.material.opacity = 0.06 + Math.sin(time * 2.5) * 0.03
         }
 
-        // 更新剑身上方波动光球
+        // 更新剑身上方能量云
         const wave = sword.getObjectByName('wave')
         if (wave) {
           const scaleX = 1 + Math.sin(time * 4) * 0.3
           const scaleY = 0.5 + Math.sin(time * 5) * 0.2
           wave.scale.set(scaleX, scaleY, 1)
-          wave.material.opacity = 0.15 + Math.sin(time * 3) * 0.1
+          wave.material.opacity = 0.1 + Math.sin(time * 3) * 0.05
         }
 
         // 更新剑尖发光
@@ -1094,7 +1531,7 @@
         if (tipGlow) {
           const scale = 1 + Math.sin(time * 6) * 0.3
           tipGlow.scale.set(scale, scale, scale)
-          tipGlow.material.opacity = 0.4 + Math.sin(time * 7) * 0.2
+          tipGlow.material.opacity = 0.6 + Math.sin(time * 7) * 0.2
         }
 
         // 更新条纹波动
@@ -1103,14 +1540,33 @@
           if (stripe) {
             const scale = 1 + Math.sin(time * (3 + i) + i * 0.5) * 0.2
             stripe.scale.set(scale, scale, 1)
-            stripe.material.opacity = 0.15 - i * 0.03 + Math.sin(time * (4 + i)) * 0.05
+            stripe.material.opacity = 0.1 - i * 0.02 + Math.sin(time * (4 + i)) * 0.03
           }
+        }
+
+        // 更新主光源
+        const mainLight = sword.getObjectByName('mainLight')
+        if (mainLight) {
+          mainLight.intensity = config.glow * (0.5 + Math.sin(time * 4) * 0.2)
+        }
+
+        // 更新剑身粒子
+        const particles = sword.getObjectByName('particles')
+        if (particles) {
+          const positions = particles.geometry.attributes.position.array
+          for (let i = 0; i < positions.length; i += 3) {
+            positions[i + 1] += 0.01
+            if (positions[i + 1] > 2.5) {
+              positions[i + 1] = 0.2
+            }
+          }
+          particles.geometry.attributes.position.needsUpdate = true
         }
 
         // 更新光环粒子旋转
         const ringParticles = sword.getObjectByName('ringParticles')
         if (ringParticles) {
-          ringParticles.rotation.y += 0.03
+          ringParticles.rotation.y += 0.035
           ringParticles.rotation.x = Math.sin(time) * 0.3
         }
       }
@@ -1128,76 +1584,174 @@
         const levelLength = 60 + level * 25
         const groundY = 0
 
-        // 草原地面
+        // 更真实的草地地面 - 不同深浅的绿色
         const groundMat = new THREE.MeshStandardMaterial({
-          color: 0x228b22,
-          roughness: 0.9,
+          color: 0x3a7d32,
+          roughness: 0.95,
+          metalness: 0.0,
         })
 
         for (let x = -10; x < levelLength; x += 4) {
-          const groundGeo = new THREE.BoxGeometry(4, 1, 20)
+          // 主地面
+          const groundGeo = new THREE.BoxGeometry(4.1, 1, 22)
           const ground = new THREE.Mesh(groundGeo, groundMat)
           ground.position.set(x, groundY - 0.5, 0)
           ground.receiveShadow = true
           scene.add(ground)
           platforms.push(ground)
 
-          // 草原装饰 - 花草
-          if (Math.random() > 0.2) {
-            const grassCount = 3 + Math.floor(Math.random() * 4)
+          // 地面纹理 - 添加深浅变化
+          const variationGeo = new THREE.BoxGeometry(3.5, 0.05, 18)
+          const variationMat = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(0x2d6b22).lerp(new THREE.Color(0x4a9b42), Math.random() * 0.5),
+            roughness: 1.0,
+          })
+          const variation = new THREE.Mesh(variationGeo, variationMat)
+          variation.position.set(x, groundY + 0.02, 0)
+          scene.add(variation)
+
+          // 草原装饰 - 更丰富的花草
+          if (Math.random() > 0.15) {
+            const grassCount = 4 + Math.floor(Math.random() * 5)
             for (let i = 0; i < grassCount; i++) {
+              const grassHeight = 0.3 + Math.random() * 0.4
               const grassGeo = new THREE.ConeGeometry(
-                0.08 + Math.random() * 0.1,
-                0.4 + Math.random() * 0.3,
+                0.06 + Math.random() * 0.08,
+                grassHeight,
                 4,
               )
-              const grassColor =
-                Math.random() > 0.3
-                  ? 0x228b22
-                  : Math.random() > 0.5
-                    ? 0x90ee90
-                    : 0xff69b4
+
+              // 更多样的颜色
+              const colorRand = Math.random()
+              let grassColor
+              if (colorRand > 0.4) {
+                grassColor = 0x3a7d32 // 深绿
+              } else if (colorRand > 0.25) {
+                grassColor = 0x5aad4a // 亮绿
+              } else if (colorRand > 0.15) {
+                grassColor = 0x90ee90 // 浅绿
+              } else if (colorRand > 0.08) {
+                grassColor = 0xff69b4 // 粉色花
+              } else if (colorRand > 0.02) {
+                grassColor = 0xffd700 // 黄色花
+              } else {
+                grassColor = 0xff6347 // 红色花
+              }
+
               const grassMat = new THREE.MeshStandardMaterial({
                 color: grassColor,
+                roughness: 0.8,
               })
               const grass = new THREE.Mesh(grassGeo, grassMat)
               grass.position.set(
-                x + (Math.random() - 0.5) * 3,
-                0.1,
-                (Math.random() - 0.5) * 15,
+                x + (Math.random() - 0.5) * 3.5,
+                0.05 + grassHeight / 2,
+                (Math.random() - 0.5) * 16,
               )
               grass.rotation.y = Math.random() * Math.PI
+              grass.rotation.z = (Math.random() - 0.5) * 0.2
               scene.add(grass)
             }
           }
 
-          // 随机树
-          if (Math.random() > 0.85) {
+          // 随机树 - 更自然的分布
+          if (Math.random() > 0.8) {
             createTree(
               x + (Math.random() - 0.5) * 2,
               0,
               (Math.random() - 0.5) * 12,
             )
           }
+
+          // 随机岩石
+          if (Math.random() > 0.92) {
+            createRock(
+              x + (Math.random() - 0.5) * 2,
+              0,
+              (Math.random() - 0.5) * 10,
+            )
+          }
+
+          // 随机灌木
+          if (Math.random() > 0.88) {
+            createBush(
+              x + (Math.random() - 0.5) * 3,
+              0,
+              (Math.random() - 0.5) * 8,
+            )
+          }
+        }
+
+        // 远景装饰 - 远处的大型树木
+        for (let x = 0; x < levelLength; x += 20) {
+          // 背景树 - 更暗、更小
+          const bgTreeTrunkGeo = new THREE.CylinderGeometry(0.2, 0.35, 3, 6)
+          const bgTreeTrunkMat = new THREE.MeshStandardMaterial({
+            color: 0x3d2817,
+            roughness: 1.0,
+          })
+          const bgTreeTrunk = new THREE.Mesh(bgTreeTrunkGeo, bgTreeTrunkMat)
+          bgTreeTrunk.position.set(x + Math.random() * 15, 1.5, -15 + Math.random() * 3)
+          scene.add(bgTreeTrunk)
+
+          const bgLeavesGeo = new THREE.ConeGeometry(1.5, 4, 6)
+          const bgLeavesMat = new THREE.MeshStandardMaterial({
+            color: 0x1a4d1a,
+            roughness: 1.0,
+          })
+          const bgLeaves = new THREE.Mesh(bgLeavesGeo, bgLeavesMat)
+          bgLeaves.position.set(
+            x + Math.random() * 15,
+            5,
+            -15 + Math.random() * 3,
+          )
+          scene.add(bgLeaves)
+        }
+
+        // 添加云朵
+        for (let i = 0; i < 8 + level; i++) {
+          createCloud(Math.random() * levelLength, 15 + Math.random() * 8, -20 - Math.random() * 10)
         }
 
         // 生成敌人 - 根据关卡调整数量和强度
         const enemyCount = 5 + level * 2
         const enemyNames = Object.keys(enemyTypes)
 
+        // 普通敌人
+        const normalEnemies = ['二叔', '二婶', '嘉姐', '万总']
+        // 精英敌人 - 高关卡出现
+        const eliteEnemies = ['铁甲', '暗影']
+
         for (let i = 0; i < enemyCount; i++) {
-          const name =
-            enemyNames[
-              Math.min(
-                Math.floor(Math.random() * (level + 1)),
-                enemyNames.length - 1,
-              )
-            ]
+          let name
+
+          // 关卡5以上有概率出现精英敌人
+          if (level >= 5 && Math.random() < 0.25) {
+            name = eliteEnemies[Math.floor(Math.random() * eliteEnemies.length)]
+          } else {
+            name = normalEnemies[Math.floor(Math.random() * Math.min(level + 2, normalEnemies.length))]
+          }
+
           const x = 15 + Math.random() * (levelLength - 30)
           const enemy = createEnemy(name, x, 1, (Math.random() - 0.5) * 8)
-          // 关卡加成
-          enemy.damage = Math.floor(enemy.damage * (1 + level * 0.1))
+          // 关卡加成 - 精英敌人加成更高
+          const isElite = eliteEnemies.includes(name)
+          const bonus = isElite ? 1.3 : 1.0
+          enemy.damage = Math.floor(enemy.damage * (1 + level * 0.1) * bonus)
+          enemy.health = Math.floor(enemy.health * (1 + level * 0.08) * bonus)
+          enemy.maxHealth = enemy.health
           enemies.push(enemy)
+        }
+
+        // BOSS关卡 - 更强的精英敌人
+        if (level % 5 === 0) {
+          const bossNames = ['铁甲', '暗影']
+          const bossName = bossNames[Math.floor(Math.random() * bossNames.length)]
+          const boss = createEnemy(bossName, levelLength - 15, 1, 0)
+          boss.damage = Math.floor(boss.damage * 2)
+          boss.health = Math.floor(boss.health * 3)
+          boss.maxHealth = boss.health
+          enemies.push(boss)
         }
 
         // 终点旗帜
@@ -1232,21 +1786,202 @@
       }
 
       function createTree(x, y, z) {
-        // 树干
-        const trunkGeo = new THREE.CylinderGeometry(0.15, 0.25, 1.5, 8)
-        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 })
+        const group = new THREE.Group()
+
+        // 树干 - 更自然的弯曲
+        const trunkHeight = 1.8 + Math.random() * 0.8
+        const trunkGeo = new THREE.CylinderGeometry(0.12, 0.2, trunkHeight, 8)
+        const trunkMat = new THREE.MeshStandardMaterial({
+          color: 0x654321,
+          roughness: 0.9,
+          metalness: 0.0,
+        })
         const trunk = new THREE.Mesh(trunkGeo, trunkMat)
-        trunk.position.set(x, y + 0.75, z)
+        trunk.position.set(x, y + trunkHeight / 2, z)
+        trunk.rotation.z = (Math.random() - 0.5) * 0.1
         trunk.castShadow = true
         scene.add(trunk)
+        group.add(trunk)
 
-        // 树冠
-        const leavesGeo = new THREE.ConeGeometry(0.8, 2, 8)
-        const leavesMat = new THREE.MeshStandardMaterial({ color: 0x228b22 })
-        const leaves = new THREE.Mesh(leavesGeo, leavesMat)
-        leaves.position.set(x, y + 2.5, z)
-        leaves.castShadow = true
-        scene.add(leaves)
+        // 树皮纹理细节
+        const barkGeo = new THREE.CylinderGeometry(0.14, 0.22, trunkHeight * 0.6, 8)
+        const barkMat = new THREE.MeshStandardMaterial({
+          color: 0x5d4037,
+          roughness: 1.0,
+        })
+        const bark = new THREE.Mesh(barkGeo, barkMat)
+        bark.position.set(x, y + trunkHeight * 0.3, z)
+        scene.add(bark)
+        group.add(bark)
+
+        // 多层次树冠 - 更自然的效果
+        const leavesColors = [0x228b22, 0x2e8b57, 0x3cb371, 0x2f6b3f]
+
+        // 底层大树冠
+        const leavesGeo1 = new THREE.SphereGeometry(1.0 + Math.random() * 0.3, 8, 8)
+        const leavesMat1 = new THREE.MeshStandardMaterial({
+          color: leavesColors[Math.floor(Math.random() * leavesColors.length)],
+          roughness: 0.8,
+        })
+        const leaves1 = new THREE.Mesh(leavesGeo1, leavesMat1)
+        leaves1.position.set(x, y + trunkHeight + 0.6, z)
+        leaves1.scale.set(1, 0.8, 1)
+        leaves1.castShadow = true
+        scene.add(leaves1)
+        group.add(leaves1)
+
+        // 中层树冠
+        const leavesGeo2 = new THREE.SphereGeometry(0.7 + Math.random() * 0.2, 7, 7)
+        const leavesMat2 = new THREE.MeshStandardMaterial({
+          color: leavesColors[Math.floor(Math.random() * leavesColors.length)],
+          roughness: 0.85,
+        })
+        const leaves2 = new THREE.Mesh(leavesGeo2, leavesMat2)
+        leaves2.position.set(
+          x + (Math.random() - 0.5) * 0.4,
+          y + trunkHeight + 1.2,
+          z + (Math.random() - 0.5) * 0.4,
+        )
+        leaves2.scale.set(1, 0.9, 1)
+        leaves2.castShadow = true
+        scene.add(leaves2)
+        group.add(leaves2)
+
+        // 顶层小树冠
+        const leavesGeo3 = new THREE.ConeGeometry(0.5 + Math.random() * 0.2, 1.0, 7)
+        const leavesMat3 = new THREE.MeshStandardMaterial({
+          color: leavesColors[Math.floor(Math.random() * leavesColors.length)],
+          roughness: 0.75,
+        })
+        const leaves3 = new THREE.Mesh(leavesGeo3, leavesMat3)
+        leaves3.position.set(
+          x + (Math.random() - 0.5) * 0.2,
+          y + trunkHeight + 1.8,
+          z + (Math.random() - 0.5) * 0.2,
+        )
+        leaves3.castShadow = true
+        scene.add(leaves3)
+        group.add(leaves3)
+
+        // 树下草丛装饰
+        for (let i = 0; i < 3; i++) {
+          const grassGeo = new THREE.ConeGeometry(0.1, 0.3, 4)
+          const grassColor = Math.random() > 0.5 ? 0x228b22 : 0x90ee90
+          const grassMat = new THREE.MeshStandardMaterial({ color: grassColor })
+          const grass = new THREE.Mesh(grassGeo, grassMat)
+          grass.position.set(
+            x + (Math.random() - 0.5) * 0.8,
+            y + 0.15,
+            z + (Math.random() - 0.5) * 0.8,
+          )
+          grass.rotation.y = Math.random() * Math.PI
+          scene.add(grass)
+        }
+
+        return group
+      }
+
+      function createRock(x, y, z) {
+        const rockGroup = new THREE.Group()
+
+        // 主岩石
+        const rockGeo = new THREE.DodecahedronGeometry(0.4 + Math.random() * 0.3, 0)
+        const rockMat = new THREE.MeshStandardMaterial({
+          color: 0x808080,
+          roughness: 0.9,
+          metalness: 0.1,
+        })
+        const rock = new THREE.Mesh(rockGeo, rockMat)
+        rock.position.set(x, y + 0.3, z)
+        rock.scale.set(1, 0.7, 0.8)
+        rock.rotation.set(Math.random(), Math.random(), Math.random())
+        rock.castShadow = true
+        scene.add(rock)
+        rockGroup.add(rock)
+
+        // 小岩石
+        if (Math.random() > 0.5) {
+          const smallRockGeo = new THREE.DodecahedronGeometry(0.15 + Math.random() * 0.1, 0)
+          const smallRockMat = new THREE.MeshStandardMaterial({
+            color: 0x707070,
+            roughness: 0.85,
+          })
+          const smallRock = new THREE.Mesh(smallRockGeo, smallRockMat)
+          smallRock.position.set(
+            x + 0.3 + Math.random() * 0.2,
+            y + 0.15,
+            z + Math.random() * 0.3,
+          )
+          smallRock.rotation.set(Math.random(), Math.random(), Math.random())
+          smallRock.castShadow = true
+          scene.add(smallRock)
+          rockGroup.add(smallRock)
+        }
+
+        return rockGroup
+      }
+
+      function createBush(x, y, z) {
+        const bushGroup = new THREE.Group()
+
+        const bushColors = [0x228b22, 0x2e8b57, 0x3d6b3f]
+        for (let i = 0; i < 3; i++) {
+          const bushGeo = new THREE.SphereGeometry(0.25 + Math.random() * 0.15, 6, 6)
+          const bushMat = new THREE.MeshStandardMaterial({
+            color: bushColors[Math.floor(Math.random() * bushColors.length)],
+            roughness: 0.8,
+          })
+          const bush = new THREE.Mesh(bushGeo, bushMat)
+          bush.position.set(
+            x + (i - 1) * 0.2,
+            y + 0.2,
+            z + (Math.random() - 0.5) * 0.3,
+          )
+          bush.scale.y = 0.7
+          bush.castShadow = true
+          scene.add(bush)
+          bushGroup.add(bush)
+        }
+
+        return bushGroup
+      }
+
+      function createCloud(x, y, z) {
+        const cloudGroup = new THREE.Group()
+
+        const cloudMat = new THREE.MeshStandardMaterial({
+          color: 0xffffff,
+          roughness: 1.0,
+          transparent: true,
+          opacity: 0.9,
+        })
+
+        // 创建云朵形状 - 多个球体组合
+        const cloudParts = [
+          { size: 1.5, offset: [0, 0, 0] },
+          { size: 1.2, offset: [1.2, -0.3, 0] },
+          { size: 1.0, offset: [-1.0, -0.2, 0.5] },
+          { size: 0.8, offset: [0.5, 0.2, -0.4] },
+          { size: 0.6, offset: [-0.8, 0.1, 0.3] },
+        ]
+
+        cloudParts.forEach((part) => {
+          const cloudGeo = new THREE.SphereGeometry(part.size, 8, 8)
+          const cloud = new THREE.Mesh(cloudGeo, cloudMat.clone())
+          cloud.position.set(
+            x + part.offset[0],
+            y + part.offset[1],
+            z + part.offset[2],
+          )
+          cloud.scale.y = 0.6
+          scene.add(cloud)
+          cloudGroup.add(cloud)
+        })
+
+        cloudGroup.userData.speed = 0.01 + Math.random() * 0.02
+        cloudGroup.userData.startX = x
+
+        return cloudGroup
       }
 
       function createPlatform(x, y, w, h, d, color) {
@@ -1267,55 +2002,237 @@
         const config = enemyTypes[name]
         const group = new THREE.Group()
 
-        // 身体
+        // ===== 身体 - 更精细的设计 =====
         const bodyGeo = new THREE.CylinderGeometry(
-          0.35 * config.scale,
-          0.3 * config.scale,
-          0.9 * config.scale,
-          8,
+          0.38 * config.scale,
+          0.32 * config.scale,
+          1.0 * config.scale,
+          10,
         )
-        const bodyMat = new THREE.MeshStandardMaterial({ color: config.color })
+        const bodyMat = new THREE.MeshStandardMaterial({
+          color: config.color,
+          roughness: 0.6,
+          metalness: 0.3,
+        })
         const body = new THREE.Mesh(bodyGeo, bodyMat)
-        body.position.y = 0.45 * config.scale
+        body.position.y = 0.5 * config.scale
         body.castShadow = true
         group.add(body)
 
-        // 头部
-        const headGeo = new THREE.SphereGeometry(0.25 * config.scale, 12, 12)
-        const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac })
+        // 身体装甲/护肩
+        const armorGeo = new THREE.SphereGeometry(0.15 * config.scale, 8, 8)
+        const armorMat = new THREE.MeshStandardMaterial({
+          color: 0x333333,
+          roughness: 0.4,
+          metalness: 0.6,
+        })
+
+        const leftArmor = new THREE.Mesh(armorGeo, armorMat)
+        leftArmor.position.set(-0.32 * config.scale, 0.85 * config.scale, 0)
+        leftArmor.scale.set(1.2, 0.6, 1)
+        group.add(leftArmor)
+
+        const rightArmor = new THREE.Mesh(armorGeo, armorMat)
+        rightArmor.position.set(0.32 * config.scale, 0.85 * config.scale, 0)
+        rightArmor.scale.set(1.2, 0.6, 1)
+        group.add(rightArmor)
+
+        // ===== 头部 - 狰狞设计 =====
+        const headGeo = new THREE.SphereGeometry(0.28 * config.scale, 10, 10)
+        const headMat = new THREE.MeshStandardMaterial({
+          color: config.color,
+          roughness: 0.5,
+          metalness: 0.2,
+        })
         const head = new THREE.Mesh(headGeo, headMat)
-        head.position.y = 1.0 * config.scale
+        head.position.y = 1.1 * config.scale
+        head.castShadow = true
         group.add(head)
 
-        // 愤怒的眼睛
-        const eyeGeo = new THREE.SphereGeometry(0.04 * config.scale, 8, 8)
+        // 头冠/角
+        const hornGeo = new THREE.ConeGeometry(0.06 * config.scale, 0.2 * config.scale, 6)
+        const hornMat = new THREE.MeshStandardMaterial({
+          color: 0x222222,
+          roughness: 0.3,
+          metalness: 0.8,
+        })
+        const leftHorn = new THREE.Mesh(hornGeo, hornMat)
+        leftHorn.position.set(-0.12 * config.scale, 1.35 * config.scale, 0.05 * config.scale)
+        leftHorn.rotation.z = -0.3
+        group.add(leftHorn)
+
+        const rightHorn = new THREE.Mesh(hornGeo, hornMat)
+        rightHorn.position.set(0.12 * config.scale, 1.35 * config.scale, 0.05 * config.scale)
+        rightHorn.rotation.z = 0.3
+        group.add(rightHorn)
+
+        // ===== 愤怒的眼睛 - 发光效果 =====
+        const eyeGeo = new THREE.SphereGeometry(0.05 * config.scale, 8, 8)
         const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 })
         const leftEye = new THREE.Mesh(eyeGeo, eyeMat)
-        leftEye.position.set(
-          -0.1 * config.scale,
-          1.05 * config.scale,
-          0.2 * config.scale,
-        )
+        leftEye.position.set(-0.1 * config.scale, 1.15 * config.scale, 0.22 * config.scale)
+        leftEye.name = 'leftEye'
+        group.add(leftEye)
+
         const rightEye = new THREE.Mesh(eyeGeo, eyeMat)
-        rightEye.position.set(
-          0.1 * config.scale,
-          1.05 * config.scale,
-          0.2 * config.scale,
-        )
-        group.add(leftEye, rightEye)
+        rightEye.position.set(0.1 * config.scale, 1.15 * config.scale, 0.22 * config.scale)
+        rightEye.name = 'rightEye'
+        group.add(rightEye)
+
+        // 眼睛光晕
+        const eyeGlowGeo = new THREE.SphereGeometry(0.08 * config.scale, 8, 8)
+        const eyeGlowMat = new THREE.MeshBasicMaterial({
+          color: 0xff3300,
+          transparent: true,
+          opacity: 0.4,
+        })
+        const leftEyeGlow = new THREE.Mesh(eyeGlowGeo, eyeGlowMat)
+        leftEyeGlow.position.copy(leftEye.position)
+        group.add(leftEyeGlow)
+
+        const rightEyeGlow = new THREE.Mesh(eyeGlowGeo, eyeGlowMat)
+        rightEyeGlow.position.copy(rightEye.position)
+        group.add(rightEyeGlow)
+
+        // ===== 嘴巴/獠牙 =====
+        const teethGeo = new THREE.BoxGeometry(0.15 * config.scale, 0.08 * config.scale, 0.05 * config.scale)
+        const teethMat = new THREE.MeshStandardMaterial({ color: 0xffffcc })
+        const teeth = new THREE.Mesh(teethGeo, teethMat)
+        teeth.position.set(0, 0.98 * config.scale, 0.25 * config.scale)
+        group.add(teeth)
+
+        // 左手
+        const armGeo = new THREE.CylinderGeometry(0.08 * config.scale, 0.06 * config.scale, 0.5 * config.scale, 8)
+        const armMat = new THREE.MeshStandardMaterial({ color: config.color })
+        const leftArm = new THREE.Mesh(armGeo, armMat)
+        leftArm.position.set(-0.42 * config.scale, 0.6 * config.scale, 0)
+        leftArm.rotation.z = 0.3
+        group.add(leftArm)
+
+        // 右手 - 武器
+        const rightArm = new THREE.Mesh(armGeo, armMat)
+        rightArm.position.set(0.42 * config.scale, 0.6 * config.scale, 0)
+        rightArm.rotation.z = -0.3
+        group.add(rightArm)
 
         // 武器
         if (name === '万总') {
-          const weaponGeo = new THREE.BoxGeometry(0.15, 0.8, 0.15)
-          const weaponMat = new THREE.MeshStandardMaterial({ color: 0x8b0000 })
+          // 大锤子
+          const weaponHeadGeo = new THREE.BoxGeometry(0.4 * config.scale, 0.3 * config.scale, 0.25 * config.scale)
+          const weaponHeadMat = new THREE.MeshStandardMaterial({
+            color: 0x8b0000,
+            metalness: 0.7,
+            roughness: 0.3,
+          })
+          const weaponHead = new THREE.Mesh(weaponHeadGeo, weaponHeadMat)
+          weaponHead.position.set(0.55 * config.scale, 0.5 * config.scale, 0.15 * config.scale)
+          group.add(weaponHead)
+
+          const weaponHandleGeo = new THREE.CylinderGeometry(0.06 * config.scale, 0.06 * config.scale, 0.8 * config.scale, 8)
+          const weaponHandleMat = new THREE.MeshStandardMaterial({ color: 0x4a3728 })
+          const weaponHandle = new THREE.Mesh(weaponHandleGeo, weaponHandleMat)
+          weaponHandle.position.set(0.5 * config.scale, 0.25 * config.scale, 0.15 * config.scale)
+          weaponHandle.rotation.z = -0.5
+          group.add(weaponHandle)
+        } else if (name === '铁甲') {
+          // 盾牌
+          const shieldGeo = new THREE.BoxGeometry(0.3 * config.scale, 0.5 * config.scale, 0.1 * config.scale)
+          const shieldMat = new THREE.MeshStandardMaterial({
+            color: 0x555555,
+            metalness: 0.8,
+            roughness: 0.2,
+          })
+          const shield = new THREE.Mesh(shieldGeo, shieldMat)
+          shield.position.set(-0.55 * config.scale, 0.5 * config.scale, 0.2 * config.scale)
+          group.add(shield)
+        } else if (name === '暗影') {
+          // 匕首
+          const daggerGeo = new THREE.BoxGeometry(0.08 * config.scale, 0.5 * config.scale, 0.03 * config.scale)
+          const daggerMat = new THREE.MeshStandardMaterial({
+            color: 0x222222,
+            metalness: 0.9,
+            roughness: 0.1,
+          })
+          const dagger = new THREE.Mesh(daggerGeo, daggerMat)
+          dagger.position.set(0.5 * config.scale, 0.45 * config.scale, 0.15 * config.scale)
+          dagger.rotation.z = -0.3
+          group.add(dagger)
+        } else {
+          // 普通武器
+          const weaponGeo = new THREE.BoxGeometry(0.12, 0.7, 0.12)
+          const weaponMat = new THREE.MeshStandardMaterial({
+            color: 0x4a4a4a,
+            metalness: 0.6,
+            roughness: 0.4,
+          })
           const weapon = new THREE.Mesh(weaponGeo, weaponMat)
-          weapon.position.set(
-            0.4 * config.scale,
-            0.6 * config.scale,
-            0.2 * config.scale,
-          )
+          weapon.position.set(0.45 * config.scale, 0.55 * config.scale, 0.2 * config.scale)
+          weapon.rotation.z = -0.4
           group.add(weapon)
         }
+
+        // ===== 腿部 =====
+        const legGeo = new THREE.CylinderGeometry(0.1 * config.scale, 0.08 * config.scale, 0.6 * config.scale, 8)
+        const legMat = new THREE.MeshStandardMaterial({ color: 0x2d3748 })
+
+        const leftLeg = new THREE.Mesh(legGeo, legMat)
+        leftLeg.position.set(-0.18 * config.scale, 0.3 * config.scale, 0)
+        group.add(leftLeg)
+
+        const rightLeg = new THREE.Mesh(legGeo, legMat)
+        rightLeg.position.set(0.18 * config.scale, 0.3 * config.scale, 0)
+        group.add(rightLeg)
+
+        // 护腿
+        const legArmorGeo = new THREE.BoxGeometry(0.15 * config.scale, 0.25 * config.scale, 0.12 * config.scale)
+        const legArmorMat = new THREE.MeshStandardMaterial({
+          color: 0x333333,
+          metalness: 0.6,
+          roughness: 0.4,
+        })
+        const leftLegArmor = new THREE.Mesh(legArmorGeo, legArmorMat)
+        leftLegArmor.position.set(-0.18 * config.scale, 0.15 * config.scale, 0.05 * config.scale)
+        group.add(leftLegArmor)
+
+        const rightLegArmor = new THREE.Mesh(legArmorGeo, legArmorMat)
+        rightLegArmor.position.set(0.18 * config.scale, 0.15 * config.scale, 0.05 * config.scale)
+        group.add(rightLegArmor)
+
+        // ===== 特殊效果 =====
+        // 怒气光环
+        const rageGeo = new THREE.RingGeometry(0.5 * config.scale, 0.7 * config.scale, 16)
+        const rageMat = new THREE.MeshBasicMaterial({
+          color: config.color,
+          transparent: true,
+          opacity: 0.15,
+          side: THREE.DoubleSide,
+        })
+        const rage = new THREE.Mesh(rageGeo, rageMat)
+        rage.rotation.x = -Math.PI / 2
+        rage.position.y = 0.05 * config.scale
+        rage.name = 'rage'
+        group.add(rage)
+
+        // 特效粒子
+        const particleGeo = new THREE.BufferGeometry()
+        const particleCount = 8
+        const positions = new Float32Array(particleCount * 3)
+        for (let i = 0; i < particleCount * 3; i += 3) {
+          const angle = (i / 3) * (Math.PI * 2 / particleCount)
+          positions[i] = Math.cos(angle) * 0.4 * config.scale
+          positions[i + 1] = 0.5 + Math.random() * 0.5
+          positions[i + 2] = Math.sin(angle) * 0.4 * config.scale
+        }
+        particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+        const particleMat = new THREE.PointsMaterial({
+          color: config.color,
+          size: 0.08 * config.scale,
+          transparent: true,
+          opacity: 0.5,
+        })
+        const particles = new THREE.Points(particleGeo, particleMat)
+        particles.name = 'particles'
+        group.add(particles)
 
         group.position.set(x, y, z)
         scene.add(group)
@@ -1333,9 +2250,14 @@
           maxHealth: config.health,
           damage: config.damage,
           speed: config.speed,
+          scale: config.scale,
+          special: config.special,
           label: label,
           lastAttack: 0,
           hitFlash: 0,
+          specialCooldown: 0,
+          isCharging: false,
+          isRaged: false,
         }
       }
 
@@ -1620,33 +2542,131 @@
           const dz = player.position.z - enemy.mesh.position.z
           const dist = Math.sqrt(dx * dx + dy * dy + dz * dz)
 
-          // AI移动 - 限制在草原范围内
-          if (dist > 1.5 && dist < 15) {
-            enemy.mesh.position.x += (dx / dist) * enemy.speed
-            enemy.mesh.position.z += (dz / dist) * enemy.speed
-            // 限制z轴范围
-            enemy.mesh.position.z = Math.max(
-              -8,
-              Math.min(8, enemy.mesh.position.z),
-            )
-            enemy.mesh.lookAt(
-              player.position.x,
-              enemy.mesh.position.y,
-              player.position.z,
-            )
+          // 更新怒气光环效果
+          const rage = enemy.mesh.getObjectByName('rage')
+          if (rage) {
+            const rageScale = 1 + Math.sin(now * 0.003) * 0.15
+            rage.scale.set(rageScale, rageScale, 1)
+            rage.material.opacity = 0.1 + Math.sin(now * 0.004) * 0.08
           }
 
-          // 攻击玩家
-          if (dist < 1.5 && now - enemy.lastAttack > 1500) {
-            playerHealth -= enemy.damage
+          // 更新粒子效果
+          const particles = enemy.mesh.getObjectByName('particles')
+          if (particles) {
+            particles.rotation.y += 0.02
+            const positions = particles.geometry.attributes.position.array
+            for (let i = 0; i < positions.length; i += 3) {
+              positions[i + 1] += 0.008
+              if (positions[i + 1] > 1.5) {
+                positions[i + 1] = 0.3
+              }
+            }
+            particles.geometry.attributes.position.needsUpdate = true
+          }
+
+          // ===== 特殊技能处理 =====
+          if (enemy.special && enemy.specialCooldown <= 0) {
+            switch (enemy.special) {
+              case 'shield':
+                // 护盾技能 - 每隔一段时间给自己加护盾
+                if (enemy.health < enemy.maxHealth * 0.5) {
+                  createShieldEffect(enemy)
+                  enemy.specialCooldown = 8000 // 8秒冷却
+                }
+                break
+              case 'charge':
+                // 冲锋技能 - 快速冲向玩家
+                if (dist < 8 && dist > 2) {
+                  enemy.isCharging = true
+                  enemy.mesh.position.x += (dx / dist) * enemy.speed * 4
+                  enemy.mesh.position.z += (dz / dist) * enemy.speed * 4
+                  createChargeTrail(enemy)
+                  enemy.specialCooldown = 5000
+                }
+                break
+              case 'heal':
+                // 自我治疗
+                if (enemy.health < enemy.maxHealth * 0.6) {
+                  enemy.health += 5
+                  createHealEffect(enemy)
+                  enemy.specialCooldown = 6000
+                }
+                break
+              case 'rage':
+                // 狂暴化 - 血量低时提升速度和伤害
+                if (enemy.health < enemy.maxHealth * 0.3 && !enemy.isRaged) {
+                  enemy.isRaged = true
+                  enemy.speed *= 1.8
+                  enemy.damage *= 1.5
+                  createRageEffect(enemy)
+                  enemy.specialCooldown = 10000
+                }
+                break
+              case 'reflect':
+                // 伤害反射 - 概率反射伤害
+                if (enemy.health < enemy.maxHealth * 0.4) {
+                  createReflectEffect(enemy)
+                  enemy.specialCooldown = 7000
+                }
+                break
+              case 'teleport':
+                // 瞬移 - 随机传送到玩家附近
+                if (dist < 10 && Math.random() < 0.02) {
+                  const teleportX = player.position.x + (Math.random() - 0.5) * 4
+                  const teleportZ = player.position.z + (Math.random() - 0.5) * 3
+                  createTeleportEffect(enemy.mesh.position.clone())
+                  enemy.mesh.position.x = Math.max(0, Math.min(50 + currentLevel * 20, teleportX))
+                  enemy.mesh.position.z = Math.max(-7, Math.min(7, teleportZ))
+                  createTeleportEffect(enemy.mesh.position.clone())
+                  enemy.specialCooldown = 4000
+                }
+                break
+            }
+          }
+          if (enemy.specialCooldown > 0) enemy.specialCooldown -= deltaTime
+
+          // ===== 增强的AI移动 =====
+          if (!enemy.isCharging) {
+            // 追击玩家
+            if (dist > 1.2 && dist < 18) {
+              const currentSpeed = enemy.isRaged ? enemy.speed * 1.5 : enemy.speed
+              enemy.mesh.position.x += (dx / dist) * currentSpeed
+              enemy.mesh.position.z += (dz / dist) * currentSpeed * 0.5
+
+              // 限制z轴范围
+              enemy.mesh.position.z = Math.max(-7, Math.min(7, enemy.mesh.position.z))
+              enemy.mesh.lookAt(player.position.x, enemy.mesh.position.y, player.position.z)
+            }
+
+            // 躲避行为 - 低血量时更谨慎
+            if (enemy.health < enemy.maxHealth * 0.3 && dist < 2) {
+              enemy.mesh.position.x -= (dx / dist) * enemy.speed * 0.5
+            }
+          } else {
+            // 冲锋结束
+            if (dist < 1.5) {
+              enemy.isCharging = false
+            }
+          }
+
+          // ===== 增强的攻击 =====
+          const attackCooldown = enemy.isRaged ? 800 : 1200
+          if (dist < 1.5 && now - enemy.lastAttack > attackCooldown) {
+            // 冲锋状态造成更多伤害
+            const damageMultiplier = enemy.isCharging ? 1.5 : 1.0
+            const actualDamage = Math.floor(enemy.damage * damageMultiplier * (currentLevel * 0.1 + 1))
+            playerHealth -= actualDamage
             enemy.lastAttack = now
             showDamageEffect()
             createHitEffect(player.position, 0xff0000)
 
-            // 击退
-            playerVelocity.x +=
-              (player.position.x - enemy.mesh.position.x) * 0.1
-            playerVelocity.y = 0.15
+            // 增强的击退效果
+            const knockback = enemy.isCharging ? 0.25 : 0.12
+            playerVelocity.x += (player.position.x - enemy.mesh.position.x) * knockback
+            playerVelocity.y = enemy.isCharging ? 0.25 : 0.15
+
+            // 攻击特效
+            createAttackEffect(enemy)
 
             if (playerHealth <= 0) gameOver(`被${enemy.name}击败了...`)
           }
@@ -1655,7 +2675,9 @@
           if (enemy.hitFlash > 0) {
             enemy.hitFlash--
             enemy.mesh.children.forEach((child) => {
-              if (child.material) child.material.emissive.setHex(0xff0000)
+              if (child.material) {
+                child.material.emissive.setHex(0xff3300)
+              }
             })
           } else {
             enemy.mesh.children.forEach((child) => {
@@ -1687,6 +2709,153 @@
           }
           return true
         })
+      }
+
+      // ===== 敌人特殊效果函数 =====
+      function createShieldEffect(enemy) {
+        const shieldGeo = new THREE.SphereGeometry(0.8 * enemy.scale, 16, 16)
+        const shieldMat = new THREE.MeshBasicMaterial({
+          color: 0x4488ff,
+          transparent: true,
+          opacity: 0.3,
+          side: THREE.DoubleSide,
+        })
+        const shield = new THREE.Mesh(shieldGeo, shieldMat)
+        shield.name = 'shield'
+        enemy.mesh.add(shield)
+
+        // 护盾持续时间
+        setTimeout(() => {
+          if (enemy.mesh.getObjectByName('shield')) {
+            enemy.mesh.remove(enemy.mesh.getObjectByName('shield'))
+          }
+        }, 3000)
+      }
+
+      function createChargeTrail(enemy) {
+        const trailGeo = new THREE.SphereGeometry(0.15 * enemy.scale, 8, 8)
+        const trailMat = new THREE.MeshBasicMaterial({
+          color: 0xff4400,
+          transparent: true,
+          opacity: 0.6,
+        })
+        const trail = new THREE.Mesh(trailGeo, trailMat)
+        trail.position.copy(enemy.mesh.position)
+        scene.add(trail)
+
+        setTimeout(() => scene.remove(trail), 500)
+      }
+
+      function createHealEffect(enemy) {
+        const healGeo = new THREE.RingGeometry(0.3, 0.5, 16)
+        const healMat = new THREE.MeshBasicMaterial({
+          color: 0x00ff00,
+          transparent: true,
+          opacity: 0.6,
+          side: THREE.DoubleSide,
+        })
+        const heal = new THREE.Mesh(healGeo, healMat)
+        heal.rotation.x = -Math.PI / 2
+        heal.position.copy(enemy.mesh.position)
+        heal.position.y += 0.5
+        scene.add(heal)
+
+        let healTime = 0
+        const healInterval = setInterval(() => {
+          healTime += 0.1
+          heal.position.y += 0.05
+          heal.material.opacity -= 0.02
+          if (healTime > 2) {
+            clearInterval(healInterval)
+            scene.remove(heal)
+          }
+        }, 50)
+      }
+
+      function createRageEffect(enemy) {
+        const rageGeo = new THREE.SphereGeometry(1.2 * enemy.scale, 16, 16)
+        const rageMat = new THREE.MeshBasicMaterial({
+          color: 0xff0000,
+          transparent: true,
+          opacity: 0.4,
+        })
+        const rage = new THREE.Mesh(rageGeo, rageMat)
+        rage.position.y = 0.5 * enemy.scale
+        rage.name = 'rageAura'
+        enemy.mesh.add(rage)
+
+        // 眼睛变红
+        enemy.mesh.children.forEach((child) => {
+          if (child.name === 'leftEye' || child.name === 'rightEye') {
+            child.material.color.setHex(0xffff00)
+          }
+        })
+      }
+
+      function createReflectEffect(enemy) {
+        const reflectGeo = new THREE.RingGeometry(0.4, 0.6, 16)
+        const reflectMat = new THREE.MeshBasicMaterial({
+          color: 0xffaa00,
+          transparent: true,
+          opacity: 0.5,
+          side: THREE.DoubleSide,
+        })
+        const reflect = new THREE.Mesh(reflectGeo, reflectMat)
+        reflect.position.y = 0.3 * enemy.scale
+        reflect.rotation.x = -Math.PI / 2
+        reflect.name = 'reflect'
+        enemy.mesh.add(reflect)
+      }
+
+      function createTeleportEffect(position) {
+        for (let i = 0; i < 8; i++) {
+          const particleGeo = new THREE.SphereGeometry(0.1, 6, 6)
+          const particleMat = new THREE.MeshBasicMaterial({
+            color: 0x8844ff,
+            transparent: true,
+            opacity: 0.8,
+          })
+          const particle = new THREE.Mesh(particleGeo, particleMat)
+          particle.position.copy(position)
+          particle.position.y += 0.5
+          scene.add(particle)
+
+          const angle = (i / 8) * Math.PI * 2
+          const animate = () => {
+            particle.position.x += Math.cos(angle) * 0.1
+            particle.position.z += Math.sin(angle) * 0.1
+            particle.material.opacity -= 0.03
+            if (particle.material.opacity > 0) {
+              requestAnimationFrame(animate)
+            } else {
+              scene.remove(particle)
+            }
+          }
+          animate()
+        }
+      }
+
+      function createAttackEffect(enemy) {
+        const effectGeo = new THREE.SphereGeometry(0.3 * enemy.scale, 8, 8)
+        const effectMat = new THREE.MeshBasicMaterial({
+          color: enemyTypes[enemy.name].color,
+          transparent: true,
+          opacity: 0.5,
+        })
+        const effect = new THREE.Mesh(effectGeo, effectMat)
+        effect.position.copy(player.position)
+        scene.add(effect)
+
+        let effectTime = 0
+        const effectInterval = setInterval(() => {
+          effectTime += 0.1
+          effect.scale.multiplyScalar(1.1)
+          effect.material.opacity -= 0.05
+          if (effectTime > 1) {
+            clearInterval(effectInterval)
+            scene.remove(effect)
+          }
+        }, 30)
       }
 
       function updateEnemyLabel(enemy) {
@@ -2345,12 +3514,33 @@
           updateUI()
           // 更新剑气波动效果
           updateSwordWave(time)
+          // 更新云朵移动
+          updateClouds()
         } else {
           // 即使游戏未运行也更新波动效果
           updateSwordWave(time)
+          updateClouds()
         }
 
         renderer.render(scene, camera)
+      }
+
+      // 云朵动画
+      const clouds = []
+      function updateClouds() {
+        scene.traverse((object) => {
+          if (object.userData && object.userData.speed && !clouds.includes(object)) {
+            clouds.push(object)
+          }
+        })
+
+        clouds.forEach((cloud) => {
+          cloud.position.x += cloud.userData.speed
+          // 循环云朵
+          if (cloud.position.x > 150) {
+            cloud.position.x = -50
+          }
+        })
       }
 
       // 启动
